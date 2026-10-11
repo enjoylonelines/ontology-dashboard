@@ -5,6 +5,7 @@ import { briefRows, relativeRecordTime, referenceLabels, readerLimitations } fro
 import { BriefingEvidencePanel } from "./BriefingEvidencePanel";
 import "./NaturalBriefing.css";
 
+type EvidenceGap = { field: string; reason: string; ownerDomain?: string; owner_domain?: string };
 type Props = {
   projectId: string; workspaceId: string; assetId: string; eventId: string | null;
   datasetVersionId?: string | null; observedAt?: string | null;
@@ -12,6 +13,7 @@ type Props = {
   canGenerate?: boolean; revision?: string;
   providedResponse?: OperationsAgentReviewSummaryResponse;
   workflowRefresh?: NaturalBriefingRefreshState | null;
+  evidenceGaps?: EvidenceGap[];
 };
 
 export type NaturalBriefingRefreshState = {
@@ -34,14 +36,17 @@ function accepted(response: OperationsAgentReviewSummaryResponse, assetId: strin
   return summary?.asset_id === assetId && stored && !response.trace.fallback ? summary : null;
 }
 
-function statusLabel(response: OperationsAgentReviewSummaryResponse, summary: OperationsAgentReviewSummary | null) {
+function statusLabel(response: OperationsAgentReviewSummaryResponse, summary: OperationsAgentReviewSummary | null, hasEvidenceGaps = false) {
   if (!summary) {
+    if (response.trace.materialization?.status === "pending") {
+      return hasEvidenceGaps ? "근거 보완 후 생성" : "LLM 응답 생성 중";
+    }
     if (response.trace.fallback) {
       if (response.trace.reason === "summary_validation_failed") {
         return "생성한 설명이 현재 근거 확인 규칙과 일치하지 않아 표시하지 않았습니다. 이 설명은 현재 판단에 사용하지 않습니다. 아래 확인이 필요한 데이터를 점검한 뒤 필요하면 브리핑을 다시 요청할 수 있습니다.";
       }
       if (response.trace.reason === "agent_review_summary_provider_disabled") {
-        return "지금은 이 화면에서 AI 브리핑을 만들 수 없습니다. 설비 상태와 점검 기록을 먼저 확인하고, 브리핑 생성이 가능한 경우 다시 요청해 주세요.";
+        return "LLM 응답 생성 불가 · 설비 상태와 점검 기록 확인 필요";
       }
       return "현재 설비 상태와 점검 기록을 바탕으로 신뢰할 수 있는 브리핑을 만들지 못했습니다. 이 설명은 보여드리지 않고 현재 판단에도 사용하지 않습니다. 근거를 확인한 뒤 필요하면 브리핑을 다시 요청할 수 있습니다.";
     }
@@ -58,6 +63,7 @@ function statusLabel(response: OperationsAgentReviewSummaryResponse, summary: Op
 
 function evidenceGapLabel(gap: { field: string; reason: string }) {
   const reason = gap.reason.split(":", 1)[0];
+  if (gap.field.includes("canonical_evidence") || reason === "canonical_evidence_missing_or_unresolved") return "원본 판단 근거";
   if (reason === "maintenance_context_missing_or_unresolved") return "정비 이력과 작업 조건";
   if (reason === "operation_context_missing_or_unresolved") return "생산 일정과 작업 조건";
   if (reason === "criticality_missing_or_unresolved" || reason === "criticality_basis_missing_or_unresolved") return "설비 중요도 기준";
@@ -65,6 +71,11 @@ function evidenceGapLabel(gap: { field: string; reason: string }) {
   if (reason === "field_inspection_location_reference_unavailable") return "현장 점검 위치 기준";
   if (reason === "adapter_context_unavailable") return "연결된 업무 맥락";
   return "브리핑 판단에 필요한 연결 근거";
+}
+
+function evidenceGapMessage(gap: { field: string; reason: string }) {
+  const label = evidenceGapLabel(gap);
+  return label === "원본 판단 근거" ? `${label}가 연결되지 않았습니다.` : `${label}이 연결되지 않았습니다.`;
 }
 
 function responseObservedAt(response: OperationsAgentReviewSummaryResponse, fallback?: string | null) {
@@ -75,7 +86,8 @@ function Briefing(props: Props & { revealed: Set<string> }) {
   const supported = props.workspaceId === "manufacturing-demo" && Boolean(props.eventId);
   const [summaryKey, setSummaryKey] = useState<string | undefined>();
   const [summary, setSummary] = useState<OperationsAgentReviewSummary | null>(null);
-  const [evidenceGaps, setEvidenceGaps] = useState<Array<{ field: string; reason: string; owner_domain: string }>>([]);
+  const [evidenceGaps, setEvidenceGaps] = useState<EvidenceGap[]>(() => props.evidenceGaps ?? []);
+  const [materializationStatus, setMaterializationStatus] = useState<string | undefined>();
   const [status, setStatus] = useState(supported ? "브리핑 조회 중" : "선택한 근거에 연결된 브리핑이 없습니다.");
   const [busy, setBusy] = useState(supported);
   const [basis, setBasis] = useState({eventId: props.eventId, observedAt: props.observedAt});
@@ -87,22 +99,25 @@ function Briefing(props: Props & { revealed: Set<string> }) {
     const response = await getOperationsAgentReviewSummary({ ...input, signal: controller.signal });
     if (controller.signal.aborted) return;
     const next = accepted(response, props.assetId);
+    const gaps = next ? [] : response.trace.evidence_gaps?.length ? response.trace.evidence_gaps : props.evidenceGaps ?? [];
     setSummary(next);
-    setEvidenceGaps(next ? [] : response.trace.evidence_gaps ?? []);
+    setEvidenceGaps(gaps);
+    setMaterializationStatus(response.trace.materialization?.status);
     setSummaryKey(next ? response.trace.materialization?.summary_key : undefined);
     if (next) setBasis({eventId: props.eventId, observedAt: responseObservedAt(response, props.observedAt)});
-    setStatus(statusLabel(response, next));
+    setStatus(statusLabel(response, next, gaps.length > 0));
   }
   useEffect(() => {
     const controller = new AbortController();
     controllerRef.current = controller;
     if (props.providedResponse) {
       const next = accepted(props.providedResponse, props.assetId);
+      const gaps = next ? [] : props.providedResponse.trace.evidence_gaps?.length ? props.providedResponse.trace.evidence_gaps : props.evidenceGaps ?? [];
       setSummary(next); setSummaryKey(next ? props.providedResponse.trace.materialization?.summary_key : undefined);
-      setEvidenceGaps(next ? [] : props.providedResponse.trace.evidence_gaps ?? []);
+      setEvidenceGaps(gaps); setMaterializationStatus(props.providedResponse.trace.materialization?.status);
       if (next) setBasis({eventId: props.eventId, observedAt: responseObservedAt(props.providedResponse, props.observedAt)});
       setBusy(false);
-      setStatus(statusLabel(props.providedResponse, next));
+      setStatus(statusLabel(props.providedResponse, next, gaps.length > 0));
     } else if (supported) void read(controller).catch(() => {
       if (!controller.signal.aborted) setStatus("브리핑을 불러오지 못했습니다. 판단 근거는 계속 확인할 수 있습니다.");
     }).finally(() => { if (!controller.signal.aborted) setBusy(false); });
@@ -136,15 +151,16 @@ function Briefing(props: Props & { revealed: Set<string> }) {
     setBusy(true);
     setStatus(summary
       ? "현재 업무 시점으로 브리핑을 갱신 중입니다. 이전 저장본을 표시합니다."
-      : "현재 업무 시점으로 자연어 브리핑을 작성하고 있습니다.");
+      : "현재 업무 시점으로 LLM 응답 생성 중");
     try {
       const result = await createOperationsAgentReviewSummary({ ...input, signal: controller.signal });
       if (controller.signal.aborted) return;
       if (!accepted(result, props.assetId)) {
         setSummary(null);
         setSummaryKey(undefined);
-        setEvidenceGaps(result.trace.evidence_gaps ?? []);
-        setStatus(statusLabel(result, null));
+        const gaps = result.trace.evidence_gaps?.length ? result.trace.evidence_gaps : props.evidenceGaps ?? [];
+        setEvidenceGaps(gaps); setMaterializationStatus(result.trace.materialization?.status);
+        setStatus(statusLabel(result, null, gaps.length > 0));
       } else {
         const next = accepted(result, props.assetId);
         setSummary(next);
@@ -162,6 +178,10 @@ function Briefing(props: Props & { revealed: Set<string> }) {
 
   const quote = summary?.role_summaries.find(item => item.role === props.role)?.quote?.trim() || summary?.summary || "";
   const rows = briefRows(quote, summary?.source_refs ?? []);
+  const visibleEvidenceGaps = [...new Map(evidenceGaps.map(gap => [evidenceGapLabel(gap), gap])).values()];
+  const evidenceState = visibleEvidenceGaps.length ? `필수 근거 ${visibleEvidenceGaps.length}건 미확인` : "판단 근거 연결됨";
+  const generating = !summary && !visibleEvidenceGaps.length && (busy || materializationStatus === "pending" || props.workflowRefresh?.state === "pending");
+  const llmState = summary ? "사용 가능" : visibleEvidenceGaps.length ? "근거 보완 후 생성" : generating ? "생성 중" : "생성 대기";
   const workflowBadge = props.workflowRefresh?.state === "pending" ? "갱신 중" : props.workflowRefresh?.state === "failed" ? "갱신 실패" : "";
   const evidenceScope = { ...props, eventId: basis.eventId, observedAt: basis.observedAt, expectedSummaryKey: summaryKey, onEvidenceChanged: () => {
         setBusy(false);
@@ -170,13 +190,15 @@ function Briefing(props: Props & { revealed: Set<string> }) {
         setBasis({ eventId: props.eventId, observedAt: props.observedAt });
         setStatus("근거가 변경되어 이전 브리핑을 숨겼습니다. 현재 근거 기준 브리핑을 다시 조회해 주세요.");
       } };
-  return <section className="natural-briefing" aria-label="AI 자연어 브리핑" aria-busy={busy}>
-    <div className="natural-briefing-heading"><strong>AI 브리핑</strong>
+  return <section className="natural-briefing" aria-label="LLM 응답" aria-busy={busy}>
+    <div className="natural-briefing-heading"><strong>LLM 응답</strong>
       {workflowBadge ? <span className={`natural-briefing-refresh is-${props.workflowRefresh?.state}`}>{workflowBadge}</span> : null}
-      {supported && props.canGenerate ? <button type="button" disabled={busy} onClick={() => void generate()}>{busy ? "처리 중" : summary ? "다시 생성" : "브리핑 생성"}</button> : null}
+      {supported && props.canGenerate ? <button type="button" disabled={busy} onClick={() => void generate()}>{busy ? "처리 중" : summary ? "다시 생성" : "LLM 응답 생성"}</button> : null}
     </div>
-    <p className="natural-briefing-status" role="status">{status}</p>
-    {!summary && evidenceGaps.length ? <section className="natural-briefing-gaps" aria-label="확인할 데이터"><strong>확인할 데이터</strong><ul>{evidenceGaps.map(gap => <li key={`${gap.field}:${gap.reason}`}>{evidenceGapLabel(gap)}이 연결되지 않았습니다.</li>)}</ul><p>원문 근거를 확인한 뒤 브리핑을 다시 요청할 수 있습니다.</p></section> : null}
+    <dl className="natural-briefing-state" aria-label="LLM과 근거 상태"><div><dt>근거 상태</dt><dd className={visibleEvidenceGaps.length ? "is-hold" : "is-ready"}>{evidenceState}</dd></div><div><dt>LLM 응답</dt><dd className={generating ? "is-generating" : visibleEvidenceGaps.length ? "is-hold" : "is-ready"}>{llmState}</dd></div></dl>
+    {generating ? <div className="natural-briefing-generation" role="status"><span aria-hidden="true"><i/><i/><i/></span>근거 기반 응답 생성 중</div> : null}
+    {status !== llmState ? <p className="natural-briefing-status" role="status">{status}</p> : null}
+    {!summary && visibleEvidenceGaps.length ? <section className="natural-briefing-gaps" aria-label="확인할 데이터"><strong>확인할 데이터</strong><ul>{visibleEvidenceGaps.map(gap => <li key={`${gap.field}:${gap.reason}`}>{evidenceGapMessage(gap)}</li>)}</ul><p>원문 근거 확인 후 재요청</p></section> : null}
     {summary ? <StreamingProse key={JSON.stringify([props.assetId, basis.eventId, props.role, quote])}
       rows={rows} identity={JSON.stringify([props.projectId, props.workspaceId, props.assetId, basis.eventId, props.role, quote])}
       revealed={props.revealed} evidenceScope={evidenceScope}/> : null}

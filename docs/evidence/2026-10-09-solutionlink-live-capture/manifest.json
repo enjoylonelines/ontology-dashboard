@@ -1,0 +1,22 @@
+{
+  "captured_at": "2026-10-11T10:51:50.266Z",
+  "source": "local running application",
+  "route": "/app/projects/manufacturing-demo-project/operations?view=overview&dashboard=workflow&role=field_operator&workspace_id=manufacturing-demo",
+  "viewport": "1920x1080",
+  "flow": [
+    "로그인",
+    "확인 필요 설비만 보기",
+    "위험 설비 선택",
+    "상황 확인",
+    "데이터 연동 상태와 LLM 응답 조건",
+    "조치 목록",
+    "사람 검토"
+  ],
+  "capture_method": "Playwright browser recording with paced interaction and smooth scrolls",
+  "claims_not_supported": [
+    "live provider quality",
+    "production deployment",
+    "real production approval",
+    "operational performance"
+  ]
+}

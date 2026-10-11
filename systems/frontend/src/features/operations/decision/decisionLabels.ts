@@ -21,6 +21,10 @@ export function lineLabel(value: string): string {
   const match = value.match(/S(\d+)(?:\s*\/\s*S\d+)?-L(\d+)/i);
   return match ? `${Number(match[1])}구역 · ${Number(match[2])}셀` : fieldText(value);
 }
+export function zoneLabel(value: string): string {
+  const match = value.match(/S(\d+)/i);
+  return match ? `${Number(match[1])}구역` : fieldText(value);
+}
 export function factorLabel(key: string, fallback?: string): string {
   return displaySensorFactorLabel(key, fallback);
 }

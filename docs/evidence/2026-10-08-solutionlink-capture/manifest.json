@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-10-09T11:45:08.072Z",
+  "fixture_only": true,
+  "claims_not_supported": [
+    "live provider quality",
+    "production deployment",
+    "real production approval",
+    "operational performance"
+  ],
+  "captures": [
+    {
+      "id": "A-production-manager-review",
+      "route": "/e2e/fixtures/solutionlink-factory-journey-preview.html"
+    },
+    {
+      "id": "B-validation-hold",
+      "route": "/e2e/fixtures/solutionlink-validation-hold-preview.html"
+    },
+    {
+      "id": "C-evidence-gap",
+      "route": "/e2e/fixtures/solutionlink-evidence-gap-preview.html"
+    }
+  ]
+}

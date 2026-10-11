@@ -10,11 +10,12 @@ import { STATUS_LABEL, formatTimestamp, formatProbability } from "../components/
 import { displayAssetName, displayEventAssetName, fieldFailureLabel } from "../displayLabels";
 import { MaintenanceWorkflowActionPanel } from "../maintenance/MaintenanceWorkflowActionPanel";
 import { MaintenanceCostDecisionPanel } from "../maintenance/MaintenanceCostDecisionPanel";
+import { NaturalBriefing } from "../overview/NaturalBriefing";
 import { ACTION_META, PHASES, currentPhase, workflowActions } from "./decisionWorkspaceModel";
 import "./decision-workspace.css";
 import { OperationsSystemAdminPage } from "../system/OperationsSystemAdminPage";
 import { canReadOperationsSystemLogs } from "../permissions";
-import { fieldText, lineLabel, factorLabel, measurement } from "./decisionLabels";
+import { fieldText, lineLabel, factorLabel, measurement, zoneLabel } from "./decisionLabels";
 import { DecisionVisuals } from "./DecisionVisuals";
 import { DecisionConditions, DecisionProposalPanel, useDecisionProposal } from "./DecisionProposalPanel";
 
@@ -83,12 +84,17 @@ function Controller({ projectId }: { projectId: string }) {
 function Notice({ title, text, retry }: { title: string; text?: string; retry?: () => void }) {
   return <section className="dw-notice" role="status"><strong>{title}</strong>{text && <p>{text}</p>}{retry && <button onClick={retry}>다시 확인</button>}</section>;
 }
-function FactoryOverview({ model, onSelect }: { model: OperationsBootstrapModel; onSelect: (assetId: string, eventId: string | null) => void }) {
+export function FactoryOverview({ model, onSelect }: { model: OperationsBootstrapModel; onSelect: (assetId: string, eventId: string | null) => void }) {
   const [search, setSearch] = useState("");
   const [attentionOnly, setAttentionOnly] = useState(false);
   const matches = (asset: OperationsAsset) => (!attentionOnly || asset.status !== "normal") && `${asset.assetId} ${asset.displayName} ${asset.line}`.toLowerCase().includes(search.toLowerCase().trim());
   const assets = model.assets.filter(matches);
-  const lines = [...new Set(assets.map(a => a.line || "라인 미등록"))];
+  const zones = new Map<string, OperationsAsset[]>();
+  for (const asset of assets) {
+    const zone = zoneLabel(asset.line || "라인 미등록");
+    zones.set(zone, [...(zones.get(zone) ?? []), asset]);
+  }
+  const zoneEntries = [...zones.entries()].sort(([left], [right]) => left.localeCompare(right, "ko", { numeric: true }));
   const events = model.events.filter(e => e.status !== "normal").slice(0, 8);
   return <>
     <div className="dw-title"><div><small>공장 전체 현황</small><h1>지금 확인할 설비와 이상 건</h1></div><span>최근 관측 · {formatTimestamp(model.context.observedAt)}</span></div>
@@ -96,7 +102,7 @@ function FactoryOverview({ model, onSelect }: { model: OperationsBootstrapModel;
     <div className="dw-overview"><section className="dw-panel dw-map"><div className="dw-section-title"><h2>설비 상태</h2><label className="dw-filter"><input type="checkbox" checked={attentionOnly} onChange={e => setAttentionOnly(e.target.checked)} />확인 필요만</label></div>
       <label className="dw-search"><Search size={16} /><input aria-label="설비 검색" placeholder="설비명 · 설비 ID · 라인 검색" value={search} onChange={e => setSearch(e.target.value)} /></label>
       {!assets.length && <Notice title="조건에 맞는 설비가 없습니다" />}
-      {lines.map(line => <section className="dw-line" key={line}><h3>{lineLabel(line)}</h3><div className="dw-machines">{assets.filter(a => (a.line || "라인 미등록") === line).map(a => <button className={`dw-machine tone-${a.status}`} key={a.assetId} onClick={() => onSelect(a.assetId, a.eventId)}><span className="dw-status">{STATUS_LABEL[a.status]}</span><strong>{displayAssetName(a)}</strong><small>{a.assetId}</small><span>{a.eventId && a.status !== "normal" ? "이상 건 확인 →" : "설비 상태 확인 →"}</span></button>)}</div></section>)}
+      {zoneEntries.map(([zone, zoneAssets]) => <section className="dw-line" key={zone}><h3>{zone}</h3><div className="dw-machines">{zoneAssets.map(a => <button className={`dw-machine tone-${a.status}`} key={a.assetId} onClick={() => onSelect(a.assetId, a.eventId)}><span className="dw-status">{STATUS_LABEL[a.status]}</span><strong>{displayAssetName(a)}</strong><small>{a.assetId}</small><span>{a.eventId && a.status !== "normal" ? "이상 건 확인 →" : "설비 상태 확인 →"}</span></button>)}</div></section>)}
     </section><section className="dw-panel"><h2>우선 확인할 이상 건</h2>{!events.length && <Notice title="확인할 이상 건이 없습니다" />}{events.map(e => <button className="dw-event" key={e.eventId} onClick={() => onSelect(e.assetId, e.eventId)}><span className={`dw-status tone-${e.status}`}>{STATUS_LABEL[e.status]}</span><strong>{displayEventAssetName(e)}</strong><span>{fieldFailureLabel(e.predictedFailureType)}</span><small>{formatTimestamp(e.observedAt)}</small><ArrowRight size={16} /></button>)}</section></div>
   </>;
 }
@@ -176,6 +182,7 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
   const dialogRef = useRef<HTMLDialogElement>(null);
   const actionOpener = useRef<HTMLElement | null>(null);
   const [decisionRevision, setDecisionRevision] = useState(0);
+  const [stage, setStage] = useState<"situation" | "evidence" | "options" | "review">("situation");
   const actions = workflowActions(detail, roles, permissions);
   const proposalState = useDecisionProposal({ projectId, workspaceId, eventId: event.eventId, assetId: event.assetId }, detail, roles, `${userId}:${decisionRevision}`);
   const phase = currentPhase(detail);
@@ -195,32 +202,43 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
   const chosen = openedBasis === reviewBasis ? actions.find(a => a.actionId === dialog) : undefined;
   const changed = () => { setFormVersion(v => v + 1); onChanged(); };
   const reason = detail.evidenceGaps.find(g => g.field === "canonical_evidence")?.reason ?? detail.closedLoop?.primaryAction?.disabledReason;
+  const stages = [
+    { id: "situation" as const, label: "상황", hint: "위험과 영향" },
+    { id: "evidence" as const, label: "근거", hint: "확인·누락 항목" },
+    { id: "options" as const, label: "조치", hint: "선택지와 조건" },
+    { id: "review" as const, label: "검토", hint: "최종 요청" },
+  ];
+  const stageIndex = stages.findIndex(item => item.id === stage);
+  const advanceStage = () => setStage(stages[Math.min(stageIndex + 1, stages.length - 1)].id);
   return <>
     <div className="dw-title"><div><small title={event.eventId}>{lineLabel(event.line)} · 이상 건 검토</small><h1>{displayEventAssetName(event)}</h1><p>{fieldFailureLabel(event.predictedFailureType)} · {formatTimestamp(event.observedAt)}</p></div><span className={`dw-status tone-${event.status}`}>{STATUS_LABEL[event.status]}</span></div>
-    <ol className="dw-flow" aria-label="이상 건 진행 상태">{PHASES.map((label, i) => <li key={label} aria-current={phase === i ? "step" : undefined}><span>{i + 1}</span>{label}</li>)}</ol>
-    <div className="dw-case-grid"><section className="dw-panel"><h2>현재 상황</h2><p className="dw-muted">진행 단계 · {phase === null ? "확인 필요" : PHASES[phase]}</p>
+    <ol className="dw-flow" aria-label="이상 건 판단 흐름">{stages.map((item, index) => <li key={item.id} className={stage === item.id ? "is-active" : undefined}><button type="button" aria-current={stage === item.id ? "step" : undefined} onClick={() => setStage(item.id)}><span>{index + 1}</span><strong>{item.label}</strong><small>{item.hint}</small></button></li>)}</ol>
+    <p className="dw-stage-status">업무 진행 상태 · {phase === null ? "확인 필요" : PHASES[phase]} <span>현재 · {stages[stageIndex].label}</span></p>
+    <div className={`dw-case-grid stage-${stage}`}><section className="dw-panel" hidden={stage !== "situation"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">1. 상황</p><h2>위험 요약</h2></div><button className="dw-primary" onClick={advanceStage}>근거 보기 <ArrowRight size={16} /></button></div><p className="dw-muted">관측값과 영향 추정치</p>
       <Metric label="고장 위험도" value={formatProbability(event.failureProbability)}><small>{detail.predictionHorizonHours ? `예측 범위 · ${detail.predictionHorizonHours}시간` : "예측 범위 확인 필요"}</small></Metric>
       <Metric label="생산 영향" value={impact?.impactStatus === "estimated" && impact.estimatedLostUnits !== null ? `${impact.estimatedLostUnits.toLocaleString()}개 예상 손실` : "산정 정보 없음"}>{impact?.impactStatus === "estimated" && <small>산정 기준 · 정지 {impact.basis.estimatedDowntimeMinutes}분</small>}</Metric>
       <Metric label="점검 담당" value={fieldText(detail.closedLoop?.workOrders.filter(w => w.workType === "inspection").at(-1)?.assignedTo || event.assignedEngineer, "배정 대기")} />
       <p className="dw-muted">최근 관측 · {formatTimestamp(detail.assetDetailStatus?.lastUpdatedAt ?? event.observedAt)}</p>
-    </section><section className="dw-panel"><h2>판단 조건과 근거</h2>
+    </section><section className="dw-panel" hidden={stage !== "evidence"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">2. 근거</p><h2>판단 근거</h2></div><button className="dw-primary" onClick={advanceStage}>조치 보기 <ArrowRight size={16} /></button></div>
+      <IntegrationStatus detail={detail} />
       <Condition label="현장 점검" value={lastInspection ? ({ maintenance_recommended: "정비 검토 필요", no_action_required: "추가 정비 불필요", data_check_required: "추가 데이터 확인 필요" }[lastInspection.outcome] ?? lastInspection.outcome) : "점검 결과 없음"} />
       <Condition label="부품 가용 정보" value={event.sparePartAvailable === true ? "가용 · 예약 확인 필요" : event.sparePartAvailable === false ? "가용 부품 없음" : "확인 필요"} />
       <Condition label="진행 상태" value={phase === null ? "상태 확인 필요" : PHASES[phase]} />
       {detail.topFactors.slice(0, 3).map(f => <Condition key={f.id} label={factorLabel(f.feature, f.label)} value={measurement(f.value, f.unit)} />)}
       <DecisionConditions state={proposalState} detail={detail} />
       <details className="dw-evidence"><summary>연결 근거 · 출처와 시각 확인</summary>{detail.evidenceContext?.selectedBasis.map(b => <article key={b.candidateId}><strong>{fieldText(b.valueSummary)}</strong><p>{b.sourceRef} · {formatTimestamp(b.asOf)}</p>{b.limitationState && <p>{fieldText(b.limitationState)}</p>}</article>)}{!detail.evidenceContext?.selectedBasis.length && detail.provenance.sourceRefs.map(ref => <p key={ref}>{ref}</p>)}{detail.evidenceContext?.limitations.map(l => <p key={l}>{fieldText(l)}</p>)}</details>
-    </section><aside className="dw-panel dw-next"><DecisionProposalPanel state={proposalState} detail={detail} roles={roles} permissions={permissions} refreshing={refreshing} onReview={open} onRetry={() => { onChanged(); setDecisionRevision(v => v + 1); }} />
-      <section className="dw-workflow" aria-label="기존 업무 실행"><h2>업무 처리</h2><p className="dw-muted">현재 업무 단계에서 가능한 요청·작업입니다. 내용을 확인하고 직접 승인해 주세요.</p>
+    </section><aside className="dw-panel dw-next" hidden={stage !== "options" && stage !== "review"}><div hidden={stage !== "options"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">3. 조치</p><h2>조치 비교</h2></div><button className="dw-primary" onClick={advanceStage}>검토 열기 <ArrowRight size={16} /></button></div><DecisionProposalPanel state={proposalState} detail={detail} roles={roles} permissions={permissions} refreshing={refreshing} onReview={open} onRetry={() => { onChanged(); setDecisionRevision(v => v + 1); }} /></div>
+      <section className="dw-workflow" aria-label="기존 업무 실행" hidden={stage !== "review"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">4. 검토</p><h2>검토 요청</h2></div><button onClick={() => setStage("evidence")}>근거 보기</button></div><p className="dw-muted">근거 확인 후 요청 제출</p>
       {detail.closedLoop?.primaryAction && <p>{fieldText(detail.closedLoop.primaryAction.ownerLabel)}</p>}
-      {actions.length ? actions.map((a, i) => <div key={a.actionId}><button className={i === 0 ? "dw-primary" : ""} disabled={Boolean(a.reason) || refreshing} onClick={() => open(a.actionId)}>{a.label}<ArrowRight size={16} /></button>{a.reason && <p className="dw-muted">{fieldText(a.reason)}</p>}</div>) : <p>{reason || (phase === 4 ? "조치 후 관측과 상태 확인 결과를 기다리고 있습니다." : "현재 실행 가능한 조치가 없습니다. 담당자의 확인을 기다리고 있습니다.")}</p>}
+      {actions.length ? actions.map((a, i) => <div key={a.actionId}><button className={i === 0 ? "dw-primary" : ""} disabled={Boolean(a.reason) || refreshing} onClick={() => open(a.actionId)}>{a.label}<ArrowRight size={16} /></button>{a.reason && <p className="dw-muted">{fieldText(a.reason)}</p>}</div>) : <p>{reason || (phase === 4 ? "조치 결과 대기" : "실행 가능한 조치 없음")}</p>}
       {refreshing && <small role="status">최신 조치 조건 확인 중</small>}
       </section>
       {asset?.eventId && asset.eventId !== event.eventId && <div className="dw-new-event"><p>이 설비의 새로운 판단 결과가 있습니다.</p><button onClick={() => props.onSelect(asset.assetId, asset.eventId)}>새 판단 결과 확인</button></div>}
     </aside></div>
-    <DecisionVisuals detail={detail} />
+    <section className="dw-panel dw-case-briefing" aria-label="브리핑과 근거 확인" hidden={stage !== "evidence"}><NaturalBriefing projectId={projectId} workspaceId={workspaceId} assetId={event.assetId} eventId={event.eventId} datasetVersionId={event.datasetVersionId} observedAt={detail.snapshotBasis?.observedAt ?? event.observedAt} role="process_manager" canGenerate={false} evidenceGaps={detail.evidenceGaps} revision={JSON.stringify([event.eventId, detail.snapshotBasis, detail.evidenceContext?.temporalStatus, detail.evidenceGaps])}/></section>
+    <section hidden={stage !== "evidence"}><DecisionVisuals detail={detail} />
     <details className="dw-history"><summary>처리 이력 · {detail.closedLoop?.timeline.length ?? 0}건</summary>{detail.closedLoop?.timeline.map(t => <article key={t.timelineId}><strong>{t.label}</strong><span>{t.actorDisplayName ?? ""}</span><time>{formatTimestamp(t.occurredAt ?? null)}</time></article>)}{!detail.closedLoop?.timeline.length && <p>등록된 처리 이력이 없습니다.</p>}</details>
-    <details className="dw-history"><summary>센서 관측 · {detail.sensors.length}개</summary><div className="dw-sensors">{detail.sensors.map(s => <Metric key={s.id} label={factorLabel(s.id, s.label)} value={measurement(s.value, s.unit)} />)}</div></details>
+    <details className="dw-history"><summary>센서 관측 · {detail.sensors.length}개</summary><div className="dw-sensors">{detail.sensors.map(s => <Metric key={s.id} label={factorLabel(s.id, s.label)} value={measurement(s.value, s.unit)} />)}</div></details></section>
     <dialog className="dw-dialog" ref={dialogRef} onCancel={close} onClose={close}><header><h2>{chosen?.label ?? "조치 조건 확인"}</h2><button onClick={close} aria-label="닫기">닫기</button></header>
       {dialog && chosen && !chosen.reason ? chosen.actionId === "calculate_maintenance_cost" ?
         <MaintenanceCostDecisionPanel key={`${event.eventId}:${chosen.targetId}:${formVersion}`} permittedInspectionId={chosen.targetId} blocked={refreshing} projectId={projectId} workspaceId={workspaceId} eventId={event.eventId} guidance={detail.inspectionTargets.find(t => t.inspectionGuidance)?.inspectionGuidance ?? null} onChanged={changed} /> :
@@ -231,4 +249,24 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
 }
 function Condition({ label, value }: { label: string; value: string }) {
   return <div className="dw-condition"><span>{label}</span><strong>{value}</strong></div>;
+}
+function integrationGapLabel(field: string, reason: string) {
+  const type = reason.split(":", 1)[0];
+  if (field.includes("canonical_evidence") || type === "canonical_evidence_missing_or_unresolved") return "원본 판단 근거";
+  if (type === "maintenance_context_missing_or_unresolved") return "정비 이력과 작업 조건";
+  if (type === "operation_context_missing_or_unresolved") return "생산 일정과 작업 조건";
+  if (type.includes("criticality")) return "설비 중요도 기준";
+  if (type === "review_priority_inputs_missing_or_unresolved") return "검토 우선순위 기준";
+  return "판단 보조 데이터";
+}
+function integrationSourceLabel(sourceRef: string) {
+  if (sourceRef.includes("maintenance_readiness")) return "정비 준비 상태";
+  if (sourceRef.includes("production")) return "생산 운영 정보";
+  if (sourceRef.includes("quality_delivery")) return "품질·납기 정보";
+  return sourceRef;
+}
+function IntegrationStatus({ detail }: { detail: OperationsEventDetailModel }) {
+  const gaps = [...new Map(detail.evidenceGaps.map(gap => [integrationGapLabel(gap.field, gap.reason), gap])).values()];
+  const connected = detail.evidenceContext?.selectedBasis ?? [];
+  return <section className="dw-integration" aria-label="데이터 연동 상태"><div className="dw-integration-heading"><h3>데이터 연동 상태</h3><span className={gaps.length ? "is-hold" : "is-ready"}>{gaps.length ? `${gaps.length}건 확인 필요` : "판단 근거 연결됨"}</span></div><div className="dw-integration-grid"><section><strong>연동됨 · {connected.length}건</strong>{connected.length ? <ul>{connected.slice(0, 3).map(item => <li key={item.candidateId}>{integrationSourceLabel(fieldText(item.sourceRef, "근거 데이터"))}</li>)}</ul> : <p>연결된 판단 근거 없음</p>}</section><section><strong>연동 필요 · {gaps.length}건</strong>{gaps.length ? <ul>{gaps.map(gap => <li key={`${gap.field}:${gap.reason}`}>{integrationGapLabel(gap.field, gap.reason)}</li>)}</ul> : <p>추가 연동 필요 없음</p>}</section></div></section>;
 }

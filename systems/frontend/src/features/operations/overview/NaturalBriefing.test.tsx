@@ -26,7 +26,7 @@ it("reads the selected event without generating and shows safe prose with collap
   await render();
   expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ assetId: "A", eventId: "event-A", projectId: "project" }));
   expect(post).not.toHaveBeenCalled();
-  expect(host.querySelector("strong")?.textContent).toBe("AI 브리핑");
+  expect(host.querySelector("strong")?.textContent).toBe("LLM 응답");
   expect(host.querySelector(".natural-briefing-line strong")?.textContent).toBe("관측된 토크");
   expect(host.querySelector("details summary")?.textContent).toBe("근거");
   expect(host.textContent).not.toContain("[[ref:");
@@ -75,10 +75,22 @@ it("discloses historical availability separately from current readiness", async 
 });
 it("shows pending when neither current nor historical summary is available", async () => {
   get.mockResolvedValue({ summary: null, trace: { fallback: false, reuse_eligibility: "INELIGIBLE", current_ready: false, historical_available: false, materialization: { status: "pending", summary_key: "pending" } } } as unknown as OperationsAgentReviewSummaryResponse);
-  await render();
-  expect(host.textContent).toContain("현재 근거의 브리핑이 아직 없습니다.");
-  expect(host.textContent).toContain("브리핑 생성을 요청하세요");
+  await act(async () => root.render(<NaturalBriefing projectId="project" workspaceId="manufacturing-demo" assetId="A" eventId="event-A" role="process_engineer" evidenceGaps={[{ field: "canonical_evidence", reason: "canonical_evidence_missing_or_unresolved" }, { field: "maintenance_context", reason: "maintenance_context_missing_or_unresolved" }, { field: "operation_context", reason: "operation_context_missing_or_unresolved" }, { field: "operation_context_repeat", reason: "operation_context_missing_or_unresolved" }]}/>));
+  expect(host.textContent).toContain("근거 보완 후 생성");
+  expect(host.textContent).toContain("필수 근거 3건 미확인");
+  expect(host.textContent).not.toContain("근거 기반 응답 생성 중");
+  expect(host.textContent).toContain("확인할 데이터");
+  expect(host.textContent).toContain("원본 판단 근거가 연결되지 않았습니다");
+  expect(host.textContent).toContain("정비 이력과 작업 조건이 연결되지 않았습니다");
+  expect(host.textContent?.match(/생산 일정과 작업 조건이 연결되지 않았습니다/g)).toHaveLength(1);
   expect(host.querySelector(".natural-briefing-line")).toBeNull();
+});
+it("animates only when evidence is connected and an LLM response is generating", async () => {
+  get.mockImplementation(() => new Promise(() => undefined));
+  await render("A", false);
+  expect(host.textContent).toContain("판단 근거 연결됨");
+  expect(host.textContent).toContain("LLM 응답생성 중");
+  expect(host.textContent).toContain("근거 기반 응답 생성 중");
 });
 it("discards late responses after selection changes", async () => {
   let finish!: (value: OperationsAgentReviewSummaryResponse) => void;
