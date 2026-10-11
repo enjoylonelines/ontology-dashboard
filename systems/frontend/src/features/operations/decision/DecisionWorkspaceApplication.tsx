@@ -188,6 +188,9 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
   const phase = currentPhase(detail);
   const impact = detail.operationContext?.eventImpact;
   const lastInspection = detail.closedLoop?.inspectionResults.at(-1);
+  const inspectionWorkOrder = detail.closedLoop?.workOrders.filter(item => item.workType === "inspection").at(-1) ?? null;
+  const inspectionAssignment = [...(detail.closedLoop?.activities ?? [])].reverse().find(item => item.workOrderId === inspectionWorkOrder?.workOrderId && item.activityType === "work_order.assigned");
+  const inspectionAssignee = typeof inspectionAssignment?.payload?.assigned_to_display_name === "string" ? inspectionAssignment.payload.assigned_to_display_name : inspectionWorkOrder?.actorDisplayName ?? inspectionWorkOrder?.assignedTo ?? event.assignedEngineer;
   const role: OperationsRoleLens = dialog && ACTION_META[dialog]?.role === "process_manager" ? "process_manager" : "field_operator";
   const canManage = roles.includes("process_manager") && permissions.includes("events.decision");
   const canExecute = (roles.includes("process_engineer") || roles.includes("maintenance_technician")) && permissions.includes("field.tasks.update");
@@ -217,7 +220,7 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
     <div className={`dw-case-grid stage-${stage}`}><section className="dw-panel" hidden={stage !== "situation"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">1. 상황</p><h2>위험 요약</h2></div><button className="dw-primary" onClick={advanceStage}>근거 보기 <ArrowRight size={16} /></button></div><p className="dw-muted">관측값과 영향 추정치</p>
       <Metric label="고장 위험도" value={formatProbability(event.failureProbability)}><small>{detail.predictionHorizonHours ? `예측 범위 · ${detail.predictionHorizonHours}시간` : "예측 범위 확인 필요"}</small></Metric>
       <Metric label="생산 영향" value={impact?.impactStatus === "estimated" && impact.estimatedLostUnits !== null ? `${impact.estimatedLostUnits.toLocaleString()}개 예상 손실` : "산정 정보 없음"}>{impact?.impactStatus === "estimated" && <small>산정 기준 · 정지 {impact.basis.estimatedDowntimeMinutes}분</small>}</Metric>
-      <Metric label="점검 담당" value={fieldText(detail.closedLoop?.workOrders.filter(w => w.workType === "inspection").at(-1)?.assignedTo || event.assignedEngineer, "배정 대기")} />
+      <Metric label="점검 담당" value={fieldText(inspectionAssignee, "배정 대기")} />
       <p className="dw-muted">최근 관측 · {formatTimestamp(detail.assetDetailStatus?.lastUpdatedAt ?? event.observedAt)}</p>
     </section><section className="dw-panel" hidden={stage !== "evidence"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">2. 근거</p><h2>판단 근거</h2></div><button className="dw-primary" onClick={advanceStage}>조치 보기 <ArrowRight size={16} /></button></div>
       <IntegrationStatus detail={detail} />

@@ -330,6 +330,7 @@ function closedLoopFromAssetDetailViewModel(
       workOrderId: item.work_order_id ?? null,
       maintenanceActionId: item.maintenance_action_id ?? null,
       maintenanceEventId: item.maintenance_event_id ?? null,
+      payload: item.payload && typeof item.payload === "object" && !Array.isArray(item.payload) ? item.payload : null,
     })),
     availableActions: (closedLoop.available_actions ?? []).map((item) => ({
       actionId: item.action_id,

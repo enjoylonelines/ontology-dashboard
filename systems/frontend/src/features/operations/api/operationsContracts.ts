@@ -651,6 +651,7 @@ export interface OperationsClosedLoopActivity {
   workOrderId?: string | null;
   maintenanceActionId?: string | null;
   maintenanceEventId?: string | null;
+  payload?: Record<string, unknown> | null;
 }
 
 export interface OperationsClosedLoopLifecycleSummary {
@@ -1305,6 +1306,7 @@ export interface AssetDetailViewModel {
       work_order_id?: string | null;
       maintenance_action_id?: string | null;
       maintenance_event_id?: string | null;
+      payload?: Record<string, unknown> | null;
     }>;
     inspection_results?: Array<{
       inspection_result_id: string;

@@ -50,7 +50,10 @@ try {
   await page.waitForTimeout(900);
   await page.getByRole("button", { name: /조치 보기/ }).last().click();
   await page.getByRole("heading", { name: "조치 비교" }).waitFor({ state: "visible" });
-  await page.getByLabel("조치 목록").evaluate(element => window.scrollTo({ top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - 160), behavior: "smooth" }));
+  const actions = page.getByLabel("조치 목록");
+  await actions.evaluate(element => window.scrollTo({ top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - 160), behavior: "smooth" }));
+  await page.waitForTimeout(1000);
+  await actions.locator("summary").click();
   await page.waitForTimeout(2200);
   await page.getByRole("button", { name: /검토 열기/ }).last().click();
   await page.getByRole("heading", { name: "검토 요청" }).waitFor({ state: "visible" });
