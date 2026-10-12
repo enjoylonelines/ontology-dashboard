@@ -1,0 +1,21 @@
+{
+  "schema_version": "solutionlink-canonical-replay-cohort-v1",
+  "dataset_version_id": "dsv-9fc144c7-d3f8-5b37-8465-04248165b7ce",
+  "dataset_version": "canonical-ai4i-physics-v3.1",
+  "source_kind": "local_synthetic_canonical_replay",
+  "selection": {
+    "order_by": "artifact_id ASC",
+    "limit": 40
+  },
+  "historical_as_of": "2026-08-29T15:00:00Z",
+  "current_as_of": "2026-10-12T00:00:00Z",
+  "freshness_hours": 24,
+  "expected": {
+    "artifact_count": 40,
+    "schema_version": "result-artifact-v1.0",
+    "model_version": "independent-logreg-v3.1",
+    "source_sha256": "af5c8a1bc8be83152e4b08451c9052a409c1c545c78bcb88dede41c6e2d9a64d",
+    "cohort_fingerprint_sha256": "b260286e864920339e25e1d79e44a161c3953fd97b419f63c5f304f489f6a20d"
+  },
+  "claim_boundary": "A local synthetic canonical replay cohort. It proves neither a held-out ML result nor live/current factory readiness."
+}

@@ -37,3 +37,23 @@ fixture store 결과다.
 이 artifact는 운영 추천 테이블 seed가 아니다. `fixture_recommendations[*].store`는
 `evaluation_demo_fixture`이고, `do_not_operationalize=true`로 고정된다. Gold 8/8은
 engineering acceptance evidence일 뿐 현장 효과나 비용 절감 증거가 아니다.
+
+## Tracked SolutionLink Readiness Gold v1 Artifact
+
+`solutionlink-readiness-gold-v1.json`은 의사결정 화면의 최신성·근거 보류·작업
+이력 연결을 확인하는 16개 합성 계약 fixture 결과다.
+
+- 재현 명령: `python3 scripts/evaluate_solutionlink_readiness.py --root . --output evaluation/results/solutionlink-readiness-gold-v1.json`
+- 검증 명령: `pytest -q tests/test_solutionlink_readiness_evaluation.py`
+- 측정값: ready/hold 판정 정밀도·재현율·F1, 보류 상태의 조치 노출률,
+  lifecycle별 필수 lineage link 완전성 및 누락 탐지
+- 범위: 고정된 합성 contract-regression. 라이브 DB를 바꾸거나 API/작업지시를 쓰지 않는다.
+- 미검증: 실제 source outage, LLM 품질, 사용자 과업 시간·오류, 정비 결과,
+  비용·가동중단·RPN 효과
+
+## Tracked Canonical Replay Cohort v1 Artifact
+
+`solutionlink-canonical-replay-cohort-v1.json`은 로컬 Canonical V3.1의 고정
+40-artifact cohort을 읽기 전용으로 재생한 결과다. historical as-of에서는 reference
+완전성·provenance·version consistency를, fixed-current as-of에서는 stale 차단을
+동시에 확인한다. 합성 replay이므로 held-out ML 성능이나 현장 효과로 사용하지 않는다.

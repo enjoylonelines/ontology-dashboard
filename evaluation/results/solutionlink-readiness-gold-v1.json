@@ -1,0 +1,260 @@
+{
+  "suite_id": "solutionlink-readiness-gold-v1",
+  "schema_version": "solutionlink-readiness-gold-v1",
+  "fixture_kind": "synthetic_contract_fixture",
+  "policy": {
+    "freshness_hours": 24,
+    "required_decision_evidence": [
+      "asset_id",
+      "artifact_id",
+      "observed_at",
+      "canonical_snapshot_id",
+      "evidence_package_id"
+    ],
+    "lineage_by_lifecycle": {
+      "none": [
+        "asset_id",
+        "artifact_id",
+        "observed_at",
+        "canonical_snapshot_id",
+        "evidence_package_id"
+      ],
+      "assigned": [
+        "asset_id",
+        "artifact_id",
+        "observed_at",
+        "canonical_snapshot_id",
+        "evidence_package_id",
+        "work_order_id",
+        "assignment_activity_id",
+        "assignee_id"
+      ],
+      "approved": [
+        "asset_id",
+        "artifact_id",
+        "observed_at",
+        "canonical_snapshot_id",
+        "evidence_package_id",
+        "work_order_id",
+        "assignment_activity_id",
+        "assignee_id",
+        "approval_activity_id"
+      ],
+      "completed": [
+        "asset_id",
+        "artifact_id",
+        "observed_at",
+        "canonical_snapshot_id",
+        "evidence_package_id",
+        "work_order_id",
+        "assignment_activity_id",
+        "assignee_id",
+        "approval_activity_id",
+        "completion_activity_id"
+      ]
+    }
+  },
+  "scenario_count": 16,
+  "passed": 16,
+  "failed": 0,
+  "decision_readiness": {
+    "true_positive": 9,
+    "false_positive": 0,
+    "false_negative": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "lineage_completeness": {
+    "true_positive": 10,
+    "false_positive": 0,
+    "false_negative": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "unsafe_action_exposure": {
+    "hold_case_count": 7,
+    "visible_action_count": 0,
+    "rate": 0.0
+  },
+  "broken_lineage_detection": {
+    "expected_broken": 6,
+    "detected_broken": 6
+  },
+  "claim_boundary": "This validates a frozen synthetic contract only. It does not measure LLM accuracy, real factory data quality, maintenance outcomes, cost reduction, or user task performance.",
+  "rows": [
+    {
+      "case_id": "SLR-01",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-02",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-03",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": true,
+      "blockers": [
+        "EVIDENCE_GAP"
+      ],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-04",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": true,
+      "blockers": [
+        "DATA_QUALITY_HOLD"
+      ],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-05",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": true,
+      "blockers": [
+        "FRESHNESS_POLICY_EXCEEDED"
+      ],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-06",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": true,
+      "blockers": [
+        "ASSET_ARTIFACT_MISMATCH"
+      ],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-07",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": false,
+      "blockers": [
+        "MISSING_DECISION_EVIDENCE"
+      ],
+      "missing_lineage": [
+        "artifact_id"
+      ],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-08",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": false,
+      "blockers": [
+        "MISSING_DECISION_EVIDENCE",
+        "FRESHNESS_POLICY_EXCEEDED"
+      ],
+      "missing_lineage": [
+        "observed_at"
+      ],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-09",
+      "decision_ready": false,
+      "action_visible": false,
+      "lineage_complete": false,
+      "blockers": [
+        "MISSING_DECISION_EVIDENCE"
+      ],
+      "missing_lineage": [
+        "canonical_snapshot_id"
+      ],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-10",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-11",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-12",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": false,
+      "blockers": [],
+      "missing_lineage": [
+        "assignee_id"
+      ],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-13",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-14",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": false,
+      "blockers": [],
+      "missing_lineage": [
+        "approval_activity_id"
+      ],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-15",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": true,
+      "blockers": [],
+      "missing_lineage": [],
+      "pass": true
+    },
+    {
+      "case_id": "SLR-16",
+      "decision_ready": true,
+      "action_visible": true,
+      "lineage_complete": false,
+      "blockers": [],
+      "missing_lineage": [
+        "completion_activity_id"
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}
