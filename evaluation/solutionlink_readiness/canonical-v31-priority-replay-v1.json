@@ -1,0 +1,45 @@
+{
+  "schema_version": "solutionlink-canonical-priority-replay-v1",
+  "source_kind": "local_synthetic_canonical_offline_evaluation",
+  "dataset_version": "canonical-ai4i-physics-v3.1",
+  "model_version": "independent-logreg-v3.1",
+  "horizon_hours": 24,
+  "top_k": [5, 10],
+  "expected": {
+    "timeline_rows": 68208,
+    "out_of_fold_model_metrics": {
+      "cnc": {
+        "rows": 54567,
+        "positive_rows": 1312,
+        "roc_auc": 0.8134529764753567,
+        "average_precision": 0.5295801727801912
+      },
+      "compressor": {
+        "rows": 13641,
+        "positive_rows": 480,
+        "roc_auc": 0.7343530760073956,
+        "average_precision": 0.2221112111888463
+      }
+    },
+    "inspection_priority_ranking": {
+      "candidate_windows": 690,
+      "positive_windows": 638,
+      "positive_asset_windows": 1792,
+      "top_k": {
+        "5": {
+          "selected_asset_windows": 3450,
+          "true_positive_asset_windows": 918,
+          "precision": 0.26608695652173914,
+          "recall": 0.5122767857142857
+        },
+        "10": {
+          "selected_asset_windows": 6900,
+          "true_positive_asset_windows": 1082,
+          "precision": 0.15681159420289856,
+          "recall": 0.6037946428571429
+        }
+      }
+    }
+  },
+  "claim_boundary": "An offline evaluation over the separate, local synthetic Canonical V3.1 truth package. The timeline uses leave-one-site-out predictions, but this is neither a live factory result nor a measured operational or business outcome."
+}

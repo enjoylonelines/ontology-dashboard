@@ -7,9 +7,13 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
+
+try:
+    import lightgbm as lgb
+except ModuleNotFoundError:  # Optional offline candidate; runtime queue must still import.
+    lgb = None
 
 from systems.generator.model.model_score import ModelScore
 
@@ -51,6 +55,8 @@ class LightGBMModel:
         **kwargs: Any,
     ) -> None:
         """Train the LightGBM classifier with explicit feature allowlist."""
+        if lgb is None:
+            raise RuntimeError("lightgbm_not_installed")
         if target_col not in df.columns:
             raise ValueError(f"Target column '{target_col}' not found in training DataFrame.")
 

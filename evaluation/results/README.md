@@ -57,3 +57,25 @@ engineering acceptance evidence일 뿐 현장 효과나 비용 절감 증거가 
 40-artifact cohort을 읽기 전용으로 재생한 결과다. historical as-of에서는 reference
 완전성·provenance·version consistency를, fixed-current as-of에서는 stale 차단을
 동시에 확인한다. 합성 replay이므로 held-out ML 성능이나 현장 효과로 사용하지 않는다.
+
+## Tracked Canonical Priority Replay v1 Artifact
+
+`solutionlink-canonical-priority-replay-v1.json`은 runtime에서 분리된
+Canonical V3.1 evaluation truth와 LOSO prediction timeline을 checksum 검증 후
+읽어, 같은 시점의 후보 설비 중 Top-K 우선순위가 다음 24시간 고장 설비를 얼마나
+포착하는지 재현한다.
+
+- 재현 명령: `python3 scripts/evaluate_solutionlink_priority_replay.py --package-root /path/to/predictive_maintenance_canonical_v3.1 --output evaluation/results/solutionlink-canonical-priority-replay-v1.json`
+- 측정값: package checksum 14/14, candidate window 690, Top-5 precision 26.61%,
+  recall 51.23%, Top-10 precision 15.68%, recall 60.38%
+- 범위: local synthetic package의 offline, leave-one-site-out priority replay
+- 미검증: live factory accuracy, 정비 예방·비용·다운타임 효과, 작업지시 자동화,
+  사용자 과업 성과
+
+## Live Failure-boundary Browser E2E
+
+`systems/frontend/e2e/solutionlink-live-failure-boundary.spec.ts`는 로그인된
+리팩터링 Decision Workspace에서 selected Case의 stale·근거 gap·LLM validation hold·
+lineage 누락을 주입하는 Chromium E2E다. stale이면 새 조치가 숨겨지고, 검증 실패한
+LLM prose가 표시되지 않으며, activity 없는 승인 상태가 `점검 시작 대기`로 표시되지
+않는지를 확인한다. 이 주입은 외부 사용자 테스트나 provider/live factory 검증이 아니다.

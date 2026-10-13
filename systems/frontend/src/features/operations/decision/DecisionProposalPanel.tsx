@@ -98,8 +98,15 @@ export function DecisionProposalPanel({ state, detail, roles, permissions, refre
   const execution = selected ? proposalExecution(state, selected, detail, roles, permissions) : null;
   const inspectionOrder = detail.closedLoop?.workOrders.filter(order => order.workType === "inspection").at(-1) ?? null;
   const assignmentActivity = [...(detail.closedLoop?.activities ?? [])].reverse().find(activity => activity.workOrderId === inspectionOrder?.workOrderId && activity.activityType === "work_order.assigned");
+  const approvalActivity = [...(detail.closedLoop?.activities ?? [])].reverse().find(activity =>
+    activity.workOrderId === inspectionOrder?.workOrderId
+    && (activity.activityType === "work_order.approved" || activity.afterStatus === "approved"),
+  );
   const assignedName = typeof assignmentActivity?.payload?.assigned_to_display_name === "string" ? assignmentActivity.payload.assigned_to_display_name : null;
-  const assignee = assignedName ?? inspectionOrder?.actorDisplayName ?? inspectionOrder?.assignedTo ?? detail.event.assignedEngineer;
+  const assignee = assignmentActivity ? assignedName ?? inspectionOrder?.actorDisplayName ?? inspectionOrder?.assignedTo : null;
+  const orderStatus = inspectionOrder?.status === "approved"
+    ? approvalActivity ? "점검 시작 대기" : "승인 이력 확인 필요"
+    : inspectionOrder?.status ?? null;
   return <section className="dw-proposal" aria-label="다음 판단">
     <h2>다음 판단</h2>
     {state.status === "loading" && <p role="status">운영 정보를 확인하고 있습니다. 작업 생성 없이 조회만 수행합니다.</p>}
@@ -115,7 +122,7 @@ export function DecisionProposalPanel({ state, detail, roles, permissions, refre
       <FactGroup title="아직 확인 필요" items={p.additional_information_needed} empty="추가 요청된 정보가 없습니다." />
       <details><summary>판단에 사용한 데이터</summary>{p.evidence_refs.map(ref => <p key={ref}>{ref}</p>)}</details>
     </>}
-    <details className="dw-action-list" aria-label="조치 목록"><summary>조치 목록 <span>{options.length ? `${options.length}건` : inspectionOrder ? "진행 이력 1건" : "확인 필요"}</span></summary>{inspectionOrder && <div className="dw-action-history"><strong>관측 시점의 점검 요청</strong><p>{inspectionOrder.status === "approved" ? "점검 시작 대기" : inspectionOrder.status} · 담당 {assignee ?? "배정 정보 없음"}</p><small>작업지시 {inspectionOrder.workOrderId}</small></div>}{!assignee && <div className="dw-action-prerequisite"><strong>선행 조치</strong><p>점검 담당자 배정 필요</p><small>점검 요청을 접수한 뒤 담당자를 지정합니다.</small></div>}{options.length ? options.map(o => <div key={o.action}><strong>{o.recommended ? "권장" : "대안"}</strong><button className={o.recommended ? "dw-primary" : ""} disabled={Boolean(o.reason) || refreshing} onClick={() => setSelection({ action: o.action, revision })}>{o.label}</button>{o.reason && <p className="dw-muted">{o.reason}</p>}</div>) : <p className="dw-muted">현재 관측은 갱신이 지연되어 새 조치를 제시하지 않습니다.</p>}</details>
+    <details className="dw-action-list" aria-label="조치 목록"><summary>조치 목록 <span>{options.length ? `${options.length}건` : inspectionOrder ? "진행 이력 1건" : "확인 필요"}</span></summary>{inspectionOrder && <div className="dw-action-history"><strong>관측 시점의 점검 요청</strong><p>{orderStatus} · 담당 {assignee ?? "배정 정보 없음"}</p><small>작업지시 {inspectionOrder.workOrderId}</small></div>}{!assignee && <div className="dw-action-prerequisite"><strong>선행 조치</strong><p>점검 담당자 배정 필요</p><small>점검 요청을 접수한 뒤 담당자를 지정합니다.</small></div>}{options.length ? options.map(o => <div key={o.action}><strong>{o.recommended ? "권장" : "대안"}</strong><button className={o.recommended ? "dw-primary" : ""} disabled={Boolean(o.reason) || refreshing} onClick={() => setSelection({ action: o.action, revision })}>{o.label}</button>{o.reason && <p className="dw-muted">{o.reason}</p>}</div>) : <p className="dw-muted">현재 관측은 갱신이 지연되어 새 조치를 제시하지 않습니다.</p>}</details>
     {selected && p && <section className="dw-human-review" aria-label="담당자 검토">
       <h3>담당자 검토 · {DECISION_ACTION_LABELS[selected]}</h3>
       <p>{p.reasoning_summary}</p>

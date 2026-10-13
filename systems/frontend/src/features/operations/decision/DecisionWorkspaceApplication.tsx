@@ -18,6 +18,7 @@ import { canReadOperationsSystemLogs } from "../permissions";
 import { fieldText, lineLabel, factorLabel, measurement, zoneLabel } from "./decisionLabels";
 import { DecisionVisuals } from "./DecisionVisuals";
 import { DecisionConditions, DecisionProposalPanel, useDecisionProposal } from "./DecisionProposalPanel";
+import { decisionRecoveryState } from "./decisionRecovery";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "조회하지 못했습니다. 다시 시도해 주세요.";
 export function DecisionWorkspaceApplication({ projectId }: { projectId: string }) {
@@ -205,6 +206,7 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
   const chosen = openedBasis === reviewBasis ? actions.find(a => a.actionId === dialog) : undefined;
   const changed = () => { setFormVersion(v => v + 1); onChanged(); };
   const reason = detail.evidenceGaps.find(g => g.field === "canonical_evidence")?.reason ?? detail.closedLoop?.primaryAction?.disabledReason;
+  const recovery = decisionRecoveryState(detail, event, asset);
   const stages = [
     { id: "situation" as const, label: "상황", hint: "위험과 영향" },
     { id: "evidence" as const, label: "근거", hint: "확인·누락 항목" },
@@ -217,6 +219,7 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
     <div className="dw-title"><div><small title={event.eventId}>{lineLabel(event.line)} · 이상 건 검토</small><h1>{displayEventAssetName(event)}</h1><p>{fieldFailureLabel(event.predictedFailureType)} · {formatTimestamp(event.observedAt)}</p></div><span className={`dw-status tone-${event.status}`}>{STATUS_LABEL[event.status]}</span></div>
     <ol className="dw-flow" aria-label="이상 건 판단 흐름">{stages.map((item, index) => <li key={item.id} className={stage === item.id ? "is-active" : undefined}><button type="button" aria-current={stage === item.id ? "step" : undefined} onClick={() => setStage(item.id)}><span>{index + 1}</span><strong>{item.label}</strong><small>{item.hint}</small></button></li>)}</ol>
     <p className="dw-stage-status">업무 진행 상태 · {phase === null ? "확인 필요" : PHASES[phase]} <span>현재 · {stages[stageIndex].label}</span></p>
+    {recovery.kind !== "none" && <section className={`dw-recovery dw-recovery-${recovery.kind}`} aria-label="관측 갱신 상태"><div><strong>{recovery.title}</strong><p>{recovery.detail}</p></div>{recovery.kind === "new_revision_available" && <button className="dw-primary" onClick={() => props.onSelect(event.assetId, recovery.eventId)}>새 판단 결과 확인 <ArrowRight size={16} /></button>}</section>}
     <div className={`dw-case-grid stage-${stage}`}><section className="dw-panel" hidden={stage !== "situation"}><div className="dw-stage-heading"><div><p className="dw-eyebrow">1. 상황</p><h2>위험 요약</h2></div><button className="dw-primary" onClick={advanceStage}>근거 보기 <ArrowRight size={16} /></button></div><p className="dw-muted">관측값과 영향 추정치</p>
       <Metric label="고장 위험도" value={formatProbability(event.failureProbability)}><small>{detail.predictionHorizonHours ? `예측 범위 · ${detail.predictionHorizonHours}시간` : "예측 범위 확인 필요"}</small></Metric>
       <Metric label="생산 영향" value={impact?.impactStatus === "estimated" && impact.estimatedLostUnits !== null ? `${impact.estimatedLostUnits.toLocaleString()}개 예상 손실` : "산정 정보 없음"}>{impact?.impactStatus === "estimated" && <small>산정 기준 · 정지 {impact.basis.estimatedDowntimeMinutes}분</small>}</Metric>
@@ -236,7 +239,6 @@ function CaseContent(props: CaseProps & { detail: OperationsEventDetailModel; ev
       {actions.length ? actions.map((a, i) => <div key={a.actionId}><button className={i === 0 ? "dw-primary" : ""} disabled={Boolean(a.reason) || refreshing} onClick={() => open(a.actionId)}>{a.label}<ArrowRight size={16} /></button>{a.reason && <p className="dw-muted">{fieldText(a.reason)}</p>}</div>) : <p>{reason || (phase === 4 ? "조치 결과 대기" : "실행 가능한 조치 없음")}</p>}
       {refreshing && <small role="status">최신 조치 조건 확인 중</small>}
       </section>
-      {asset?.eventId && asset.eventId !== event.eventId && <div className="dw-new-event"><p>이 설비의 새로운 판단 결과가 있습니다.</p><button onClick={() => props.onSelect(asset.assetId, asset.eventId)}>새 판단 결과 확인</button></div>}
     </aside></div>
     <section className="dw-panel dw-case-briefing" aria-label="브리핑과 근거 확인" hidden={stage !== "evidence"}><NaturalBriefing projectId={projectId} workspaceId={workspaceId} assetId={event.assetId} eventId={event.eventId} datasetVersionId={event.datasetVersionId} observedAt={detail.snapshotBasis?.observedAt ?? event.observedAt} role="process_manager" canGenerate={false} evidenceGaps={detail.evidenceGaps} revision={JSON.stringify([event.eventId, detail.snapshotBasis, detail.evidenceContext?.temporalStatus, detail.evidenceGaps])}/></section>
     <section hidden={stage !== "evidence"}><DecisionVisuals detail={detail} />

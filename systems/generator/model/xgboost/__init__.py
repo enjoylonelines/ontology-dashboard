@@ -9,7 +9,11 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-import xgboost as xgb
+
+try:
+    import xgboost as xgb
+except ModuleNotFoundError:  # Optional offline candidate; runtime queue must still import.
+    xgb = None
 
 from systems.generator.model.model_score import ModelScore
 
@@ -51,6 +55,8 @@ class XGBoostModel:
         **kwargs: Any,
     ) -> None:
         """Train the XGBoost classifier with explicit feature allowlist."""
+        if xgb is None:
+            raise RuntimeError("xgboost_not_installed")
         if target_col not in df.columns:
             raise ValueError(f"Target column '{target_col}' not found in training DataFrame.")
 

@@ -83,6 +83,16 @@ describe("Decision Proposal boundary (fixture-backed)", () => {
     for (const t of ["검토 준비","선택한 관측 시점","작업 생성 없이 운영 정보만 확인했습니다","판단에 사용한 데이터","데이터 출처"]) expect(host.textContent).toContain(t);
     for (const t of ["근거 고정","AI 판단 준비","조사 완료","구조화된 판단 조건","추천 근거","근거 출처","세션 재사용"]) expect(host.textContent).not.toContain(t);
   });
+  it("does not present an approved inspection as ready without its approval activity", async () => {
+    const {state,detail} = setup();
+    detail.closedLoop!.workOrders = [{ workOrderId: "WO-MISSING-APPROVAL", workType: "inspection", status: "approved", assignedTo: "user-1", actorDisplayName: "박지민", createdAt: null, updatedAt: null }];
+    detail.closedLoop!.activities = [];
+    await act(async () => root.render(<DecisionProposalPanel state={state} detail={detail} roles={roles} permissions={permissions} refreshing={false} onReview={vi.fn()}/>));
+    const summary = host.querySelector('details[aria-label="조치 목록"] summary') as HTMLElement;
+    await act(async () => summary.click());
+    expect(host.textContent).toContain("승인 이력 확인 필요");
+    expect(host.textContent).not.toContain("점검 시작 대기");
+  });
   it.each(["loading","unavailable","stale"] as const)("renders %s without proposal buttons", async status => {
     const {detail} = setup();
     const state: DecisionProposalState = status === "loading" ? {status} : {status,reason:"판단 확인 필요"};
