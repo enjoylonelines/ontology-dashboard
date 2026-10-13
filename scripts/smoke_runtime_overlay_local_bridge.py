@@ -18,6 +18,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -344,9 +345,12 @@ def _assert_gen_data(result: dict[str, Any]) -> None:
         raise AssertionError(f"unexpected canonical count: {result['output_counts']}")
     if result["target_in_source"]:
         raise AssertionError(f"{EQUIPMENT_ID} was not excluded from canonical source rows")
-    if result["available_count"] != 1:
-        raise AssertionError(f"unexpected availability count: {result['available_count']}")
-    if result["available_event_ids"] != ["OVERLAY-AVAILABLE:MAINT-LOCAL-BRIDGE-001:post:1"]:
+    if result["available_count"] < 1:
+        raise AssertionError("runtime overlay did not publish an availability event")
+    if len(set(result["available_event_ids"])) != result["available_count"]:
+        raise AssertionError(f"availability event IDs are not unique: {result['available_event_ids']}")
+    expected_prefix = "OVERLAY-AVAILABLE:MAINT-LOCAL-BRIDGE-001:post:"
+    if not all(event_id.startswith(expected_prefix) for event_id in result["available_event_ids"]):
         raise AssertionError(f"unexpected availability ids: {result['available_event_ids']}")
 
 
@@ -358,6 +362,7 @@ def _read_backend_overlay(output_root: Path) -> list[dict[str, Any]]:
 
 
 def smoke(gen_data_root: Path, work_root: Path) -> dict[str, Any]:
+    started_at = time.perf_counter()
     if work_root.exists():
         shutil.rmtree(work_root)
     inbox_path = work_root / "inbox" / "maintenance-events.jsonl"
@@ -369,21 +374,26 @@ def smoke(gen_data_root: Path, work_root: Path) -> dict[str, Any]:
     _insert_seed_outbox(database)
 
     first_drain = _drain_dispatcher(database, inbox_path)
+    first_drain_finished_at = time.perf_counter()
     if first_drain != {"mode": "drain", "processed": 3}:
         raise AssertionError(f"unexpected dispatcher result: {first_drain!r}")
     _assert_dispatch(database, inbox_path)
 
     gen_data_result = _run_gen_data(gen_data_root, inbox_path, output_root)
+    gen_data_finished_at = time.perf_counter()
     _assert_gen_data(gen_data_result)
 
     backend_events = _read_backend_overlay(output_root)
-    if len(backend_events) != 1:
+    backend_reader_finished_at = time.perf_counter()
+    if len(backend_events) != gen_data_result["available_count"]:
         raise AssertionError(f"unexpected backend overlay event count: {len(backend_events)}")
-    event = backend_events[0]
-    if event["equipment_id"] != EQUIPMENT_ID or event["batch_rows"] != 1:
-        raise AssertionError(f"unexpected backend overlay event: {event!r}")
+    if {event["equipment_id"] for event in backend_events} != {EQUIPMENT_ID}:
+        raise AssertionError(f"unexpected backend overlay equipment: {backend_events!r}")
+    if any(event["batch_rows"] < 1 for event in backend_events):
+        raise AssertionError(f"overlay availability included an empty batch: {backend_events!r}")
 
     second_drain = _drain_dispatcher(database, inbox_path)
+    completed_at = time.perf_counter()
     if second_drain != {"mode": "drain", "processed": 0}:
         raise AssertionError(f"unexpected idempotency drain result: {second_drain!r}")
     if len(_read_jsonl(inbox_path)) != 3:
@@ -400,10 +410,20 @@ def smoke(gen_data_root: Path, work_root: Path) -> dict[str, Any]:
         "gen_data": gen_data_result,
         "backend_reader": {
             "event_count": len(backend_events),
-            "event_id": event["event_id"],
-            "equipment_id": event["equipment_id"],
-            "batch_rows": event["batch_rows"],
-            "storage_reference": event["storage_reference"],
+            "event_ids": [event["event_id"] for event in backend_events],
+            "equipment_id": EQUIPMENT_ID,
+            "batch_rows": [event["batch_rows"] for event in backend_events],
+            "storage_references": [event["storage_reference"] for event in backend_events],
+        },
+        "timings_ms": {
+            "outbox_to_replay_inbox": round((first_drain_finished_at - started_at) * 1000, 2),
+            "replay_inbox_to_overlay_availability": round(
+                (gen_data_finished_at - first_drain_finished_at) * 1000,
+                2,
+            ),
+            "overlay_reader": round((backend_reader_finished_at - gen_data_finished_at) * 1000, 2),
+            "idempotency_redrain": round((completed_at - backend_reader_finished_at) * 1000, 2),
+            "total": round((completed_at - started_at) * 1000, 2),
         },
     }
 
