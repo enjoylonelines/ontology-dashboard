@@ -1,0 +1,31 @@
+{
+  "schema_version": "solutionlink-source-anchored-heldout-v1",
+  "suite_id": "solutionlink-source-anchored-heldout-v1",
+  "frozen_at": "2026-10-15",
+  "source": {
+    "kind": "local_synthetic_canonical_prediction_timeline",
+    "repository_commit": "2dc3a3f1f4cf0345a5b300b8d6965c6fa46eb363",
+    "timeline_sha256": "808eefa66dfcf70c6b5f234a57cc50e0d0b0fbfd661233532a82f2c23b67743f",
+    "selection": "For each asset type, rank distinct asset_id values by SHA256('solutionlink-heldout-v1:' + asset_id), select six, then take the temporal midpoint prediction for each selected asset.",
+    "claim_boundary": "The source rows are from a local synthetic Canonical replay, not production operations data."
+  },
+  "labeling": {
+    "method": "predeclared_self_label_mutations",
+    "rule": "The expected decision state follows the declared mutation, not model score or failure probability. This is not independent human labeling."
+  },
+  "policy": {"freshness_hours": 24},
+  "seeds": [
+    {"prediction_id":"CMP-S04-L01-01#2026-08-15T18:00:00+09:00","asset_id":"CMP-S04-L01-01","asset_type":"compressor","observed_at":"2026-08-15T18:00:00+09:00","failure_probability":0.244867,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CMP-S02-L01-01#2026-08-15T18:00:00+09:00","asset_id":"CMP-S02-L01-01","asset_type":"compressor","observed_at":"2026-08-15T18:00:00+09:00","failure_probability":0.116886,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CMP-S01-L02-01#2026-08-15T17:00:00+09:00","asset_id":"CMP-S01-L02-01","asset_type":"compressor","observed_at":"2026-08-15T17:00:00+09:00","failure_probability":0.22022,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CMP-S03-L04-01#2026-08-15T10:00:00+09:00","asset_id":"CMP-S03-L04-01","asset_type":"compressor","observed_at":"2026-08-15T10:00:00+09:00","failure_probability":0.070159,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CMP-S01-L05-01#2026-08-15T10:00:00+09:00","asset_id":"CMP-S01-L05-01","asset_type":"compressor","observed_at":"2026-08-15T10:00:00+09:00","failure_probability":0.20662,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CMP-S02-L03-01#2026-08-15T12:00:00+09:00","asset_id":"CMP-S02-L03-01","asset_type":"compressor","observed_at":"2026-08-15T12:00:00+09:00","failure_probability":0.334708,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S04-L03-02#2026-08-15T14:00:00+09:00","asset_id":"CNC-S04-L03-02","asset_type":"cnc","observed_at":"2026-08-15T14:00:00+09:00","failure_probability":0.251316,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S04-L01-01#2026-08-15T15:00:00+09:00","asset_id":"CNC-S04-L01-01","asset_type":"cnc","observed_at":"2026-08-15T15:00:00+09:00","failure_probability":0.194296,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S02-L04-04#2026-08-15T16:00:00+09:00","asset_id":"CNC-S02-L04-04","asset_type":"cnc","observed_at":"2026-08-15T16:00:00+09:00","failure_probability":0.253904,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S02-L03-01#2026-08-15T13:00:00+09:00","asset_id":"CNC-S02-L03-01","asset_type":"cnc","observed_at":"2026-08-15T13:00:00+09:00","failure_probability":0.183613,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S02-L04-02#2026-08-15T17:00:00+09:00","asset_id":"CNC-S02-L04-02","asset_type":"cnc","observed_at":"2026-08-15T17:00:00+09:00","failure_probability":0.169392,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"},
+    {"prediction_id":"CNC-S01-L05-01#2026-08-15T16:00:00+09:00","asset_id":"CNC-S01-L05-01","asset_type":"cnc","observed_at":"2026-08-15T16:00:00+09:00","failure_probability":0.316299,"model_version":"independent-logreg-v3.1","prediction_horizon_hours":24,"source_type":"derived_replay_prediction"}
+  ]
+}

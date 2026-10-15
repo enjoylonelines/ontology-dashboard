@@ -1,0 +1,56 @@
+{
+  "suite_id": "solutionlink-source-anchored-heldout-v1",
+  "schema_version": "solutionlink-source-anchored-safety-ab-result-v1",
+  "fixture_kind": "source_anchored_synthetic_mutation_suite",
+  "source_verification": {
+    "checked": true,
+    "sha256_matches": true,
+    "all_seed_predictions_present": true
+  },
+  "sample": {
+    "seed_count": 12,
+    "scenario_count": 84,
+    "asset_type_counts": {
+      "compressor": 6,
+      "cnc": 6
+    }
+  },
+  "decision_visibility": {
+    "baseline": {
+      "true_positive": 24,
+      "false_positive": 48,
+      "false_negative": 0,
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5
+    },
+    "treatment": {
+      "true_positive": 24,
+      "false_positive": 0,
+      "false_negative": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "unsafe_action_exposure": {
+    "hold_case_count": 60,
+    "baseline_visible_action_count": 48,
+    "baseline_rate": 0.8,
+    "treatment_visible_action_count": 0,
+    "treatment_rate": 0.0,
+    "absolute_reduction_percentage_points": 80.0
+  },
+  "valid_action_retention": {
+    "ready_case_count": 24,
+    "baseline_visible_action_count": 24,
+    "treatment_visible_action_count": 24
+  },
+  "broken_lineage_detection": {
+    "expected_broken_count": 12,
+    "baseline_detected_count": 0,
+    "treatment_detected_count": 12
+  },
+  "claim_boundary": "Source rows are deterministically selected from a versioned local synthetic Canonical replay, but incompleteness labels are declared mutations and self-labeled. This is not independent human labeling, a production A/B, real-outage sampling, LLM quality evidence, or user/business outcome evidence.",
+  "pass": true
+}
