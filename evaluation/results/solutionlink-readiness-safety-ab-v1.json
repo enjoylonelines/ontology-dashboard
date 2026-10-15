@@ -1,0 +1,59 @@
+{
+  "suite_id": "solutionlink-readiness-gold-v1",
+  "schema_version": "solutionlink-readiness-safety-ab-v1",
+  "fixture_kind": "synthetic_contract_fixture",
+  "comparison": {
+    "baseline": {
+      "name": "artifact_presence_only_v0",
+      "rule": "Show a proposed action when artifact_id is present; do not check freshness, evidence gaps, data-quality hold, asset match, or lifecycle lineage.",
+      "historical_deployment_claim": false
+    },
+    "treatment": {
+      "name": "evidence_aware_gate_v1",
+      "rule": "Use the current frozen readiness contract: required evidence, asset match, 24-hour freshness, data-quality hold, evidence gaps, and lifecycle lineage checks."
+    }
+  },
+  "scenario_count": 16,
+  "decision_visibility": {
+    "baseline": {
+      "true_positive": 9,
+      "false_positive": 6,
+      "false_negative": 0,
+      "precision": 0.6,
+      "recall": 1.0,
+      "f1": 0.7499999999999999
+    },
+    "treatment": {
+      "true_positive": 9,
+      "false_positive": 0,
+      "false_negative": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "f1_absolute_change": 0.25
+  },
+  "unsafe_action_exposure": {
+    "hold_case_count": 7,
+    "baseline_visible_action_count": 6,
+    "baseline_rate": 0.8571428571428571,
+    "treatment_visible_action_count": 0,
+    "treatment_rate": 0.0,
+    "absolute_reduction_percentage_points": 85.714286,
+    "relative_reduction": 1.0
+  },
+  "valid_action_retention": {
+    "ready_case_count": 9,
+    "baseline_visible_action_count": 9,
+    "treatment_visible_action_count": 9,
+    "treatment_rate": 1.0
+  },
+  "broken_lineage_detection": {
+    "expected_broken_count": 6,
+    "baseline_detected_count": 0,
+    "treatment_detected_count": 6,
+    "absolute_improvement_percentage_points": 100.0
+  },
+  "claim_boundary": "This is a frozen synthetic counterfactual policy comparison, not a historical production A/B test. It measures contract-level unsafe action exposure and lineage detection only; it does not measure LLM accuracy, real outages, factory outcomes, user behavior, latency, or business impact.",
+  "pass": true
+}
