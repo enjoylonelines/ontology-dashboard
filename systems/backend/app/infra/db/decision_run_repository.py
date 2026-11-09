@@ -41,12 +41,14 @@ class DecisionRunRepository:
             return json.loads(row['state_json']) if row else None
 
     def list_pending(self, identity, *, limit=50):
-        """List incomplete, lease-free rows within one tenant/project scope."""
+        """List incomplete, lease-free rows for this exact evidence identity."""
         if not 1 <= limit <= 500:
             raise ValueError('invalid pending run limit')
         with self.connection(identity) as c:
             now=self.clock(c)
-            rows=self.execute(c,'SELECT decision_session_id,state_json FROM decision_agent_runs WHERE organization_id=? AND project_id=? AND (lease_owner IS NULL OR lease_until<=?) ORDER BY updated_at ASC LIMIT ?', (identity.organization_id, identity.project_id, now, limit)).fetchall()
+            identity_hash=hashlib.sha256(identity.model_dump_json().encode()).hexdigest()
+            result_filter = "(state_json::jsonb -> 'result') IS NULL OR (state_json::jsonb -> 'result') = 'null'::jsonb" if self.postgres else "json_extract(state_json, '$.result') IS NULL"
+            rows=self.execute(c,f'SELECT decision_session_id,state_json FROM decision_agent_runs WHERE organization_id=? AND project_id=? AND identity_hash=? AND ({result_filter}) AND (lease_owner IS NULL OR lease_until<=?) ORDER BY updated_at ASC LIMIT ?', (identity.organization_id, identity.project_id, identity_hash, now, limit)).fetchall()
             pending=[]
             for row in rows:
                 state=json.loads(row['state_json'])

@@ -1,0 +1,12 @@
+{
+  "count": 30,
+  "target_arrival_rate_per_second": 10.0,
+  "producer_elapsed_seconds": 3.013,
+  "all_complete_elapsed_seconds": 4.431,
+  "restart_to_all_complete_seconds": 1.414,
+  "completed": 30,
+  "missing": 0,
+  "observed_end_to_end_p50_ms": 1526.0269,
+  "observed_end_to_end_p95_ms": 2731.9931,
+  "notes": "Synthetic fixture, external OS process SIGKILL/restart; observed completion is polling upper bound, NOT queue-wait. No API, LLM or sustained long-run DB metrics."
+}

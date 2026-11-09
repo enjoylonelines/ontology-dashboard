@@ -15,7 +15,7 @@ from uuid import uuid4
 from app.operations.decision_durable_runner import DurableDecisionRunner, configuration_binding
 from app.operations.decision_worker import DecisionResumer, DecisionWorkerSupervisor, WorkerHandle
 from app.operations.decision_policy import DecisionPolicyGuard, decision_policy_facts_from_packet
-from app.operations.decision_run_store import DecisionRunStore
+from app.operations.decision_run_store import DecisionRunStore, DecisionRunBusy
 from app.operations.decision_support_agent import DecisionAgentRequest, DecisionAgentRunResult, ManufacturingDecisionAgent
 from app.operations.decision_support_contract import DecisionSession, DecisionSessionStatus, DecisionToolCall
 from app.operations.operational_context_contract import OperationalRequestIdentity
@@ -32,6 +32,8 @@ class DecisionSessionApplicationService:
     _sessions: dict[str, DecisionSession] = field(default_factory=dict)
     _lock: Lock = field(default_factory=Lock)
     _packets: dict[str, dict] = field(default_factory=dict)
+    _dispatch_lock: Lock = field(default_factory=Lock)
+    _inflight: dict[str, WorkerHandle] = field(default_factory=dict)
     worker_supervisor: DecisionWorkerSupervisor | None = None
     resumer: DecisionResumer | None = None
     pending_identity_provider: Callable[[], list[OperationalRequestIdentity]] | None = None
@@ -69,28 +71,39 @@ class DecisionSessionApplicationService:
         binding = _packet_binding(packet)
         initial = DurableDecisionRunner.initial_state(request, evidence_binding=binding)
         initial["created_at"] = agent.now().isoformat()
-        state, token = self.run_store.claim(
-            session_id,
-            identity,
-            sha256((configuration_binding(agent, request) + binding).encode()).hexdigest(),
-            initial,
-        )
-        if token is not None:
-            self.run_store.release(session_id, identity, token)
-        if state.get("result") is not None:
-            return session_id, None, DecisionAgentRunResult.model_validate(state["result"])
-        supervisor = self.worker_supervisor
-        if supervisor is None:
-            raise RuntimeError("decision_worker_supervisor_unavailable")
-        handle = supervisor.submit(
-            lambda: self.create(
-                identity=identity,
-                actor_role=actor_role,
-                request_id=request_id,
-                actor_id=actor_id,
+        with self._dispatch_lock:
+            # Keep only currently executing handles; completed state is durable.
+            self._inflight = {key: value for key, value in self._inflight.items() if not value.future.done()}
+            existing = self._inflight.get(session_id)
+            if existing is not None and not existing.future.done():
+                return session_id, existing, None
+            try:
+                state, token = self.run_store.claim(
+                    session_id,
+                    identity,
+                    sha256((configuration_binding(agent, request) + binding).encode()).hexdigest(),
+                    initial,
+                )
+            except DecisionRunBusy:
+                # Another process owns the lease; do not dispatch duplicate work.
+                return session_id, None, None
+            if token is not None:
+                self.run_store.release(session_id, identity, token)
+            if state.get("result") is not None:
+                return session_id, None, DecisionAgentRunResult.model_validate(state["result"])
+            supervisor = self.worker_supervisor
+            if supervisor is None:
+                raise RuntimeError("decision_worker_supervisor_unavailable")
+            handle = supervisor.submit(
+                lambda: self.create(
+                    identity=identity,
+                    actor_role=actor_role,
+                    request_id=request_id,
+                    actor_id=actor_id,
+                )
             )
-        )
-        return session_id, handle, None
+            self._inflight[session_id] = handle
+            return session_id, handle, None
 
     def resume(
         self,
@@ -116,13 +129,20 @@ class DecisionSessionApplicationService:
         supervisor = self.worker_supervisor
         if supervisor is None:
             raise RuntimeError("decision_worker_supervisor_unavailable")
-        return supervisor.submit(
-            lambda: DurableDecisionRunner(agent, self.run_store).run(
-                request,
-                session_id,
-                evidence_binding=binding,
+        with self._dispatch_lock:
+            self._inflight = {key: value for key, value in self._inflight.items() if not value.future.done()}
+            existing = self._inflight.get(session_id)
+            if existing is not None:
+                return existing
+            handle = supervisor.submit(
+                lambda: DurableDecisionRunner(agent, self.run_store).run(
+                    request,
+                    session_id,
+                    evidence_binding=binding,
+                )
             )
-        )
+            self._inflight[session_id] = handle
+            return handle
 
     def resume_pending(
         self,

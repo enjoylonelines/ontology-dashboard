@@ -1,0 +1,74 @@
+[
+  {
+    "count": 100,
+    "workers": 2,
+    "enqueue_seconds": 1.289,
+    "all_complete_seconds": 2.315,
+    "throughput_per_second": 43.19,
+    "enqueue_latency_p50_ms": 103.7192,
+    "enqueue_latency_p95_ms": 259.6535,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  },
+  {
+    "count": 100,
+    "workers": 4,
+    "enqueue_seconds": 1.453,
+    "all_complete_seconds": 1.597,
+    "throughput_per_second": 62.63,
+    "enqueue_latency_p50_ms": 142.3713,
+    "enqueue_latency_p95_ms": 164.7606,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  },
+  {
+    "count": 500,
+    "workers": 2,
+    "enqueue_seconds": 5.745,
+    "all_complete_seconds": 10.995,
+    "throughput_per_second": 45.47,
+    "enqueue_latency_p50_ms": 104.9125,
+    "enqueue_latency_p95_ms": 169.8942,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  },
+  {
+    "count": 500,
+    "workers": 4,
+    "enqueue_seconds": 6.832,
+    "all_complete_seconds": 7.024,
+    "throughput_per_second": 71.18,
+    "enqueue_latency_p50_ms": 134.8403,
+    "enqueue_latency_p95_ms": 153.1774,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  },
+  {
+    "count": 1000,
+    "workers": 2,
+    "enqueue_seconds": 9.576,
+    "all_complete_seconds": 19.545,
+    "throughput_per_second": 51.16,
+    "enqueue_latency_p50_ms": 93.7355,
+    "enqueue_latency_p95_ms": 111.4623,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  },
+  {
+    "count": 1000,
+    "workers": 4,
+    "enqueue_seconds": 14.245,
+    "all_complete_seconds": 14.692,
+    "throughput_per_second": 68.06,
+    "enqueue_latency_p50_ms": 139.4769,
+    "enqueue_latency_p95_ms": 160.2798,
+    "missing_results": 0,
+    "synthetic": true,
+    "note": "enqueue latency is not queue-wait; completion includes sequential future inspection"
+  }
+]

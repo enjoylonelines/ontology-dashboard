@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ontology-dashboard-decision-workers
+  namespace: ontology-dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: ontology-dashboard-decision-workers}
+  template:
+    metadata:
+      labels: {app: ontology-dashboard-decision-workers}
+    spec:
+      serviceAccountName: ontology-dashboard-runtime
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: decision-resumer
+          image: ghcr.io/oosuhada/ontology-dashboard-api:RELEASE_SHA
+          command: ["python", "-m", "app.operations.decision_worker_process"]
+          envFrom:
+            - configMapRef: {name: ontology-dashboard-config}
+            - secretRef: {name: ontology-dashboard-secrets}
+          env:
+            - name: DECISION_RESUMER_IDENTITIES
+              valueFrom:
+                secretKeyRef:
+                  name: ontology-dashboard-secrets
+                  key: DECISION_RESUMER_IDENTITIES
+            - name: DECISION_RESUMER_INTERVAL_SECONDS
+              value: "5"
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}

@@ -62,6 +62,10 @@ spec:
           envFrom:
             - configMapRef: {name: ontology-dashboard-config}
             - secretRef: {name: ontology-dashboard-secrets}
+          env:
+            # The dedicated DecisionSession deployment owns background resumption.
+            - name: DECISION_RESUMER_IDENTITIES
+              value: ""
           startupProbe:
             httpGet: {path: /health/startup, port: http}
             failureThreshold: 30
