@@ -1121,7 +1121,9 @@ function normalizeOperationsAgentReviewSummaryResponse(
       ...trace,
       reuse_eligibility,
       current_ready: reuse_eligibility === "EXACT_VALIDATED",
-      historical_available: reuse_eligibility === "LATEST_STORED",
+      // New servers report historical presence separately from the old
+      // latest-stored serving behavior. Preserve it while keeping it ineligible.
+      historical_available: trace.historical_available === true || reuse_eligibility === "LATEST_STORED",
     },
   };
 }

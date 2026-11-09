@@ -1124,7 +1124,9 @@ def _agent_review_readiness_trace(summary: dict[str, Any] | None, trace: dict[st
         "evidence_gaps": evidence_gaps,
         "reuse_eligibility": reuse_eligibility,
         "current_ready": reuse_eligibility == "EXACT_VALIDATED",
-        "historical_available": reuse_eligibility == "LATEST_STORED",
+        # Presence of an older record is informational only; it never promotes
+        # that record to current evidence.
+        "historical_available": bool(trace.get("historical_available")) or reuse_eligibility == "LATEST_STORED",
     }
 
 

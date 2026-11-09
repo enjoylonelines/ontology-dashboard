@@ -1005,7 +1005,7 @@ def test_agent_review_summary_reuses_materialized_snapshot(
     ]["workflow_run"]["workflow_run_id"]
 
 
-def test_agent_review_summary_lookup_keeps_latest_stored_when_snapshot_moves(
+def test_agent_review_summary_lookup_reports_history_without_serving_it_when_snapshot_moves(
     service: FactorySignalService,
 ) -> None:
     provider = FakeAgentReviewSummaryProvider(
@@ -1029,13 +1029,12 @@ def test_agent_review_summary_lookup_keeps_latest_stored_when_snapshot_moves(
         history_window="24h",
     )
 
-    assert summary == first_summary
-    assert trace["reuse_eligibility"] == "LATEST_STORED"
-    assert trace["latest_stored"] is True
+    assert summary is None
+    assert trace["reuse_eligibility"] == "INELIGIBLE"
     assert trace["current_ready"] is False
     assert trace["historical_available"] is True
-    assert trace["materialization"]["summary_key"] == first_trace["materialization"]["summary_key"]
-    assert trace["materialization"]["decision_as_of"] == first_trace["materialization"]["decision_as_of"]
+    assert trace["materialization"]["summary_key"] != first_trace["materialization"]["summary_key"]
+    assert trace["materialization"]["decision_as_of"] != first_trace["materialization"]["decision_as_of"]
 
 
 def test_agent_review_summary_lookup_is_pending_without_stored_summary(

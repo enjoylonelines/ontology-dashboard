@@ -681,7 +681,7 @@ class ManufacturingPredictiveMaintenanceService:
         history_window: str,
         trigger: str,
         engine: str,
-        generation_policy: str = "always",
+        generation_policy: str = "hybrid",
         preparation_metrics: dict[str, float] | None = None,
         packet_loader=None,
     ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -743,7 +743,7 @@ class ManufacturingPredictiveMaintenanceService:
         history_window: str,
         trigger: str,
         engine: str,
-        generation_policy: str = "always",
+        generation_policy: str = "hybrid",
         preparation_metrics: dict[str, float] | None = None,
         packet_loader=None,
     ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -1101,23 +1101,18 @@ class ManufacturingPredictiveMaintenanceService:
             (time.monotonic() - lookup_started) * 1000, 3
         )
         reuse_eligibility = "EXACT_VALIDATED" if summary is not None else "INELIGIBLE"
+        # History is discovery-only. It must not re-enter the current snapshot
+        # read path after its fingerprint no longer matches.
+        historical_available = False
         if summary is None:
-            latest = self.repository.latest_agent_review_summary(
+            historical_available = self.repository.latest_agent_review_summary(
                 organization_id=organization_id,
                 project_id=project_id,
                 workspace_id=workspace_id,
                 asset_id=str(packet.get("asset_id") or ""),
                 event_id=(packet.get("snapshot_basis") or {}).get("event_id"),
                 history_window=history_window,
-            )
-            if latest is not None:
-                summary = latest["summary"]
-                trace = {
-                    **(latest.get("trace") or {}),
-                    "materialization": _materialization_trace(latest, reused=True),
-                    "latest_stored": True,
-                }
-                reuse_eligibility = "LATEST_STORED"
+            ) is not None
         lookup_policy = {
             "policy": "read_only_lookup",
             "generation_decision": "REUSE" if summary is not None else "ON_DEMAND",
@@ -1154,6 +1149,7 @@ class ManufacturingPredictiveMaintenanceService:
             {
                 **trace,
                 "reuse_eligibility": reuse_eligibility,
+                "historical_available": historical_available,
                 "observability": observability,
             },
         )
@@ -1195,7 +1191,7 @@ class ManufacturingPredictiveMaintenanceService:
         history_window: str = "24h",
         limit: int | None = None,
         source: str = "fixture",
-        generation_policy: str = "always",
+        generation_policy: str = "hybrid",
         explicit_refresh: bool = False,
     ) -> dict[str, Any]:
         """Materialize missing Agent Review Summaries from explicit candidates."""
@@ -1940,7 +1936,9 @@ def _with_agent_review_readiness(
         **trace,
         "reuse_eligibility": reuse_eligibility,
         "current_ready": reuse_eligibility == "EXACT_VALIDATED",
-        "historical_available": reuse_eligibility == "LATEST_STORED",
+        # A history signal is informational only; it never makes stale prose
+        # eligible as current evidence.
+        "historical_available": bool(trace.get("historical_available")) or reuse_eligibility == "LATEST_STORED",
     }
 
 

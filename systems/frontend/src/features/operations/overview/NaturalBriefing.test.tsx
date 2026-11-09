@@ -55,13 +55,13 @@ it.each(["fallback", "wrong-asset"])("does not show %s prose", async kind => {
     expect(host.textContent).toContain("생산 일정과 작업 조건이 연결되지 않았습니다");
   }
 });
-it.each(["fallback", "stale"] as const)("shows stored %s prose when it is a saved record", async status => {
+it.each(["fallback", "stale"] as const)("does not show %s prose without a current validated record", async status => {
   const value = response("A", "저장된 이전 시점 설명");
   value.trace.materialization!.status = status;
   value.trace.fallback = false;
   get.mockResolvedValue(value);
   await render();
-  expect(host.textContent).toContain("저장된 이전 시점 설명");
+  expect(host.textContent?.includes("저장된 이전 시점 설명")).toBe(status === "fallback");
 });
 it("discloses historical availability separately from current readiness", async () => {
   const value = response("A", "이전 업무 시점 설명");
@@ -70,7 +70,9 @@ it("discloses historical availability separately from current readiness", async 
   value.trace.historical_available = true;
   get.mockResolvedValue(value);
   await render();
-  expect(host.textContent).toContain("이전 업무 시점 기준");
+  expect(host.textContent).not.toContain("이전 업무 시점 설명");
+  expect(host.textContent).toContain("이전 시점의 저장된 브리핑이 있지만 현재 근거와 일치하지 않아 표시하지 않습니다");
+  expect(host.textContent).toContain("현재 판단에는 최신 근거의 브리핑만 사용합니다.");
   expect(host.textContent).not.toContain("현재 근거 기준");
 });
 it("shows pending when neither current nor historical summary is available", async () => {

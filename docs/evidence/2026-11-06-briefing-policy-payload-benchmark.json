@@ -1,0 +1,32 @@
+{
+  "evidence_level": "deterministic_policy_simulation_with_prompt_byte_proxy",
+  "snapshot_count": 80,
+  "same_fixture_sha256": "8440120f2aa86e9e6da0a21fca8fce751b1dbc4dbf7b4cc3fae5123aac9adb0e",
+  "provider_calls": null,
+  "provider_reported_prompt_tokens": null,
+  "provider_reported_completion_tokens": null,
+  "cost": null,
+  "note": "No provider invoked. Bytes are serialized prompt size, not tokens. Fixed simulator failure and retry assumptions.",
+  "policies": {
+    "always": {
+      "generation_starts": 62,
+      "simulated_input_prompt_utf8_bytes": 2345320,
+      "simulated_retries": 9,
+      "critical_generation_requests": 40,
+      "critical_count": 40,
+      "simulated_exact_query_hits": 141,
+      "simulated_query_count": 240
+    },
+    "hybrid": {
+      "generation_starts": 56,
+      "simulated_input_prompt_utf8_bytes": 2110074,
+      "simulated_retries": 9,
+      "critical_generation_requests": 40,
+      "critical_count": 40,
+      "simulated_exact_query_hits": 112,
+      "simulated_query_count": 240
+    }
+  },
+  "generation_start_reduction_fraction": 0.09677419354838712,
+  "simulated_prompt_byte_reduction_fraction": 0.10030443606842565
+}

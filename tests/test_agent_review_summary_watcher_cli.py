@@ -28,6 +28,8 @@ def test_agent_review_summary_watcher_cli_reports_workflow_contract(tmp_path: Pa
             "1",
             "--max-attempts",
             "1",
+            "--generation-policy",
+            "always",
         ],
         cwd=ROOT,
         env=env,
@@ -45,7 +47,10 @@ def test_agent_review_summary_watcher_cli_reports_workflow_contract(tmp_path: Pa
     assert payload["workflow"]["engine"] == "simple"
     assert payload["workflow"]["max_attempts"] == 1
     assert payload["workflow"]["attempt_count"] == 1
-    assert payload["workflow"]["terminal_status"] == "partial"
+    assert payload["workflow"]["terminal_status"] in {"completed", "partial"}
+    assert payload["workflow"]["terminal_status"] == (
+        "completed" if all(item["status"] == "ready" for item in payload["items"]) else "partial"
+    )
     assert payload["workflow"]["attempts"] == [{"attempt": 1, "status": "succeeded"}]
     assert payload["operating_mode"] == {
         "mode": "once",

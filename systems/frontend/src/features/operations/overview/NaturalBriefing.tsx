@@ -32,14 +32,18 @@ export function NaturalBriefing(props: Props) {
 function accepted(response: OperationsAgentReviewSummaryResponse, assetId: string) {
   const summary = response.summary;
   const status = response.trace.materialization?.status;
-  const stored = status === "ready" || status === "fallback" || status === "stale";
-  return summary?.asset_id === assetId && stored && !response.trace.fallback ? summary : null;
+  const stored = status === "ready" || status === "fallback";
+  // A historical narrative must never be rendered as the current snapshot briefing.
+  return summary?.asset_id === assetId && stored && response.trace.current_ready === true && !response.trace.fallback ? summary : null;
 }
 
 function statusLabel(response: OperationsAgentReviewSummaryResponse, summary: OperationsAgentReviewSummary | null, hasEvidenceGaps = false) {
   if (!summary) {
     if (response.trace.materialization?.status === "pending") {
-      return hasEvidenceGaps ? "근거 보완 후 생성" : "LLM 응답 생성 중";
+      return hasEvidenceGaps ? "근거 보완 후 생성" : "현재 운영 상태는 별도로 표시됩니다. 최신 근거의 LLM 브리핑은 생성 대기 또는 갱신 중입니다.";
+    }
+    if (response.trace.historical_available && !response.trace.current_ready) {
+      return "이전 시점의 저장된 브리핑이 있지만 현재 근거와 일치하지 않아 표시하지 않습니다. 현재 판단에는 최신 근거의 브리핑만 사용합니다.";
     }
     if (response.trace.fallback) {
       if (response.trace.reason === "summary_validation_failed") {
@@ -55,7 +59,7 @@ function statusLabel(response: OperationsAgentReviewSummaryResponse, summary: Op
   return response.trace.materialization?.status === "fallback" || response.trace.fallback || summary.mode !== "llm"
     ? "저장된 보조 브리핑 · LLM 응답 검증 실패 시 기준 근거로 구성"
     : response.trace.historical_available && !response.trace.current_ready
-      ? "저장된 브리핑 · 이전 업무 시점 기준"
+      ? "이전 업무 시점의 브리핑은 현재 판단에서 제외됨"
       : response.trace.current_ready
         ? "저장된 브리핑 · 현재 근거 기준"
         : "저장된 브리핑 · 준비 상태 확인 필요";
@@ -128,14 +132,12 @@ function Briefing(props: Props & { revealed: Set<string> }) {
     if (!props.workflowRefresh) return;
     if (props.workflowRefresh.state === "pending") {
       setBusy(true);
-      setStatus(summary
-        ? "최신 작업 기준으로 브리핑을 갱신 중입니다. 이전 저장본을 표시합니다."
-        : "작업은 접수됐고 최신 브리핑을 생성 중입니다.");
+      setSummary(null);
+      setSummaryKey(undefined);
+      setStatus("작업이 접수됐습니다. 현재 운영 상태는 별도로 표시되며 최신 근거의 브리핑을 갱신 중입니다.");
     } else if (props.workflowRefresh.state === "failed") {
       setBusy(false);
-      setStatus(summary
-        ? "최신 브리핑 생성에 실패했습니다. 이전 저장본을 표시합니다."
-        : "최신 브리핑 생성에 실패했습니다. 저장된 브리핑이 아직 없습니다.");
+      setStatus("최신 브리핑 생성에 실패했습니다. 이전 시점의 설명은 현재 판단 근거로 표시하지 않습니다.");
     } else {
       setBusy(false);
       setStatus(summary
@@ -202,7 +204,7 @@ function Briefing(props: Props & { revealed: Set<string> }) {
     {summary ? <StreamingProse key={JSON.stringify([props.assetId, basis.eventId, props.role, quote])}
       rows={rows} identity={JSON.stringify([props.projectId, props.workspaceId, props.assetId, basis.eventId, props.role, quote])}
       revealed={props.revealed} evidenceScope={evidenceScope}/> : null}
-    {summary ? <div className="natural-briefing-basis">{props.assetId}{basis.observedAt ? <> · 관측 기준 <time dateTime={basis.observedAt}>{relativeRecordTime(basis.observedAt)}</time></> : null}
+    {summary ? <div className="natural-briefing-basis">{props.assetId}{basis.observedAt ? <> · 브리핑 근거 시각 <time dateTime={basis.observedAt} title={basis.observedAt}>{new Date(basis.observedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</time> · 현재 근거와 일치 확인됨</> : null}
       {summary.limitations.length ? <details><summary>해석 시 유의사항</summary>{readerLimitations(summary.limitations).map((text, i) => <p key={i}>{text}</p>)}</details> : null}
     </div> : null}
   </section>;

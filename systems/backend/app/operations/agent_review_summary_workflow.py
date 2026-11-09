@@ -28,7 +28,7 @@ class AgentReviewSummaryWorkflowService(Protocol):
         history_window: str = "24h",
         limit: int | None = None,
         source: str = "fixture",
-        generation_policy: str = "always",
+        generation_policy: str = "hybrid",
         explicit_refresh: bool = False,
     ) -> dict[str, Any]:
         """Create or reuse validated summaries for available snapshots."""

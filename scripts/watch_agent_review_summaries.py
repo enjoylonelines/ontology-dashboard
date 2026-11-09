@@ -51,7 +51,7 @@ def run_once(
     stale_policy: str,
     source: str,
     require_live_provider: bool,
-    generation_policy: str = "always",
+    generation_policy: str = "hybrid",
     explicit_refresh: bool = False,
 ) -> dict:
     from app.operations.agent_review_summary_workflow import AgentReviewSummaryWorkflow
@@ -131,7 +131,7 @@ def main() -> None:
         help="Exit non-zero if any materialized item used deterministic fallback.",
     )
     parser.add_argument("--watch", action="store_true")
-    parser.add_argument("--generation-policy", choices=("click", "always", "hybrid", "demand"), default="always")
+    parser.add_argument("--generation-policy", choices=("click", "always", "hybrid", "demand"), default="hybrid")
     parser.add_argument("--refresh", action="store_true", help="Explicitly regenerate current snapshots through the guarded generation path (once only).")
     parser.add_argument("--interval-seconds", type=float, default=60.0)
     parser.add_argument("--max-iterations", type=int)
