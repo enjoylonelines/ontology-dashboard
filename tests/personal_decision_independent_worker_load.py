@@ -28,7 +28,7 @@ def main():
         raise RuntimeError("isolated loopback PostgreSQL required")
     count = int(os.getenv("DECISION_LOAD_COUNT", "100"))
     rate = float(os.getenv("DECISION_LOAD_RATE", "20"))
-    if not 1 <= count <= 500 or not 1 <= rate <= 100:
+    if not 1 <= count <= 1000 or not 1 <= rate <= 100:
         raise ValueError("bounded synthetic benchmark only")
     store = DecisionRunRepository(dsn, lease_seconds=3)
     prefix = uuid4().hex[:8]
@@ -96,7 +96,10 @@ def main():
             "notes": "Synthetic fixture, external OS process SIGKILL/restart; observed completion is polling upper bound, NOT queue-wait. No API, LLM or sustained long-run DB metrics.",
         }
         print(json.dumps(result), flush=True)
-        Path("docs/evidence/2026-11-05-personal-independent-worker-load.json").write_text(json.dumps(result, indent=2)+"\n")
+        Path(os.getenv(
+            "DECISION_LOAD_OUTPUT",
+            "docs/evidence/2026-11-05-personal-independent-worker-load.json",
+        )).write_text(json.dumps(result, indent=2)+"\n")
     finally:
         if process is not None:
             stop(process)

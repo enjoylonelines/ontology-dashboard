@@ -69,7 +69,10 @@ def run():
                 assert missing == 0
             finally:
                 service.stop_workers(wait=True)
-    output = Path("docs/evidence/2026-11-05-personal-postgres-load-results.json")
+    output = Path(os.getenv(
+        "DECISION_LOAD_OUTPUT",
+        "docs/evidence/2026-11-05-personal-postgres-load-results.json",
+    ))
     output.write_text(json.dumps(results, indent=2) + "\n")
     print(f"saved={output}")
 
